@@ -1,6 +1,9 @@
+"use client"
+
 import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus } from "lucide-react"
-import { columns, tasks, type Priority, type Task } from "@/lib/data"
+import { columns, type Priority, type Task } from "@/lib/data"
 import { cn } from "@/lib/utils"
+import { useApp } from "@/lib/context"
 
 const priorityConfig: Record<Priority, { icon: typeof SignalHigh; className: string; label: string }> = {
   urgent: { icon: AlertTriangle, className: "text-destructive", label: "Urgente" },
@@ -11,8 +14,11 @@ const priorityConfig: Record<Priority, { icon: typeof SignalHigh; className: str
 }
 
 export function KanbanBoard() {
+  const { userData } = useApp()
+  const { tasks } = userData
+
   return (
-    <div className="rounded-xl border border-border bg-card">
+    <div className="rounded-xl border border-border bg-card flex-1 min-w-0">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
           <h2 className="text-sm font-semibold text-card-foreground">Quadro Kanban</h2>
@@ -43,10 +49,16 @@ export function KanbanBoard() {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-2">
-                {colTasks.map((t) => (
-                  <TaskCard key={t.id} task={t} />
-                ))}
+              <div className="flex flex-col gap-2 min-h-[150px] rounded-lg bg-accent/20 p-1">
+                {colTasks.length > 0 ? (
+                  colTasks.map((t) => (
+                    <TaskCard key={t.id} task={t} />
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-muted-foreground border border-dashed border-border rounded-lg">
+                    Sem tarefas
+                  </div>
+                )}
               </div>
             </div>
           )

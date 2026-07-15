@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useApp, users } from "@/lib/context"
 
 const nav = [
   { name: "Dashboard", icon: LayoutDashboard, active: true },
@@ -31,6 +32,8 @@ const workspace = [
 
 export function Sidebar() {
   const [active, setActive] = useState("Dashboard")
+  const { currentUser, setCurrentUser } = useApp()
+  const [showSwitcher, setShowSwitcher] = useState(false)
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 lg:flex">
@@ -78,17 +81,60 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="mt-auto">
+      <div className="mt-auto relative">
         <NavItem icon={Settings} label="Configurações" active={false} onClick={() => {}} />
-        <div className="mt-3 flex items-center gap-2 rounded-md px-2 py-1.5">
-          <span className="flex size-7 items-center justify-center rounded-full bg-chart-4 text-xs font-semibold text-white">
-            MA
+        
+        {/* User Switcher Popover */}
+        {showSwitcher && (
+          <div className="absolute bottom-12 left-0 right-0 z-50 mb-2 rounded-lg border border-border bg-card p-2 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-150">
+            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Alternar Usuário
+            </p>
+            <div className="flex flex-col gap-1">
+              {users.map((u) => (
+                <button
+                  key={u.id}
+                  onClick={() => {
+                    setCurrentUser(u)
+                    setShowSwitcher(false)
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-sidebar-accent",
+                    currentUser.id === u.id && "bg-sidebar-accent font-medium"
+                  )}
+                >
+                  <span
+                    className="flex size-6 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                    style={{ backgroundColor: u.avatarColor }}
+                  >
+                    {u.avatar}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-foreground">{u.name}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{u.email}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={() => setShowSwitcher(!showSwitcher)}
+          className="mt-3 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent"
+        >
+          <span
+            className="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+            style={{ backgroundColor: currentUser.avatarColor }}
+          >
+            {currentUser.avatar}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-sidebar-foreground">Marina Alves</p>
-            <p className="truncate text-xs text-muted-foreground">marina@fluxo.app</p>
+            <p className="truncate text-sm font-medium text-sidebar-foreground">{currentUser.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{currentUser.email}</p>
           </div>
-        </div>
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200" style={{ transform: showSwitcher ? "rotate(180deg)" : "none" }} />
+        </button>
       </div>
     </aside>
   )

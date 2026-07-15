@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { Play, Plus, Bell } from "lucide-react"
+import { useApp } from "@/lib/context"
 
 export function DashboardHeader() {
+  const { currentUser } = useApp()
   const [seconds, setSeconds] = useState(2 * 3600 + 14 * 60)
   const [running, setRunning] = useState(true)
 
@@ -21,7 +23,7 @@ export function DashboardHeader() {
   return (
     <header className="flex flex-col gap-4 border-b border-border bg-background/80 px-6 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-lg font-semibold text-foreground">Bom dia, Marina</h1>
+        <h1 className="text-lg font-semibold text-foreground">Bom dia, {currentUser.name.split(" ")[0]}</h1>
         <p className="text-sm text-muted-foreground">
           {new Date().toLocaleDateString("pt-BR", {
             weekday: "long",

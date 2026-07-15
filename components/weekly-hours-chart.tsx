@@ -1,9 +1,15 @@
-import { weeklyHours } from "@/lib/data"
+"use client"
+
+import { useApp } from "@/lib/context"
 
 export function WeeklyHoursChart() {
+  const { userData } = useApp()
+  const { weeklyHours } = userData
+
   const max = 8
   const total = weeklyHours.reduce((acc, d) => acc + d.hours, 0)
-  const avg = total / weeklyHours.filter((d) => d.goal > 0).length
+  const goalDays = weeklyHours.filter((d) => d.goal > 0).length
+  const avg = goalDays > 0 ? total / goalDays : 0
 
   // chart geometry
   const width = 320
