@@ -30,7 +30,7 @@ export const users: UserProfile[] = [
   {
     id: "MA",
     name: "Marina Alves",
-    email: "marina@fluxo.app",
+    email: "marina@octho.app",
     avatar: "MA",
     avatarColor: "#10b981",
     imageUrl: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
@@ -39,7 +39,7 @@ export const users: UserProfile[] = [
   {
     id: "FA",
     name: "Flavio Alves",
-    email: "flavio@fluxo.app",
+    email: "flavio@octho.app",
     avatar: "FA",
     avatarColor: "#6366f1",
     imageUrl: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",

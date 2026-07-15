@@ -59,7 +59,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
             <h2 className="text-sm font-semibold text-card-foreground">Quadro Kanban</h2>
-            <p className="text-xs text-muted-foreground">Todas as tarefas do projeto Fluxo Core</p>
+            <p className="text-xs text-muted-foreground">Todas as tarefas do projeto Octho Core</p>
           </div>
         </div>
 

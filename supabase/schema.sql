@@ -1,5 +1,5 @@
 -- =============================================================
--- Fluxo — Schema do Banco de Dados (Supabase / PostgreSQL)
+-- Octho — Schema do Banco de Dados (Supabase / PostgreSQL)
 -- =============================================================
 
 -- Tabela de tarefas

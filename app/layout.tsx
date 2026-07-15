@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
-  title: 'Fluxo — Gestão de Tarefas & Horas',
+  title: 'Octho — Gestão de Tarefas & Horas',
   description: 'Dashboard kanban com contabilização de horas diárias, mensais e atividades',
   generator: 'v0.app',
   icons: {

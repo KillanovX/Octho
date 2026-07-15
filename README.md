@@ -1,12 +1,12 @@
-# Fluxo — Gestão de Tarefas & Horas
+# Octho — Gestão de Tarefas & Horas
 
-Este documento serve como a **Fonte de Verdade (Source of Truth)** do aplicativo **Fluxo**, consolidando todos os detalhes sobre a arquitetura, stack tecnológica, estrutura de dados, componentes de interface e regras de negócio.
+Este documento serve como a **Fonte de Verdade (Source of Truth)** do aplicativo **Octho**, consolidando todos os detalhes sobre a arquitetura, stack tecnológica, estrutura de dados, componentes de interface e regras de negócio.
 
 ---
 
 ## 🚀 Visão Geral do Projeto
 
-O **Fluxo** é um dashboard de gestão de tarefas e horas projetado para equipes de desenvolvimento e design. Ele permite acompanhar o andamento de demandas em um quadro Kanban, contabilizar horas trabalhadas em tempo real via cronômetro ativo, gerenciar múltiplos usuários com sessões isoladas de dados e visualizar estatísticas e métricas de produtividade.
+O **Octho** é um dashboard de gestão de tarefas e horas projetado para equipes de desenvolvimento e design. Ele permite acompanhar o andamento de demandas em um quadro Kanban, contabilizar horas trabalhadas em tempo real via cronômetro ativo, gerenciar múltiplos usuários com sessões isoladas de dados e visualizar estatísticas e métricas de produtividade.
 
 ---
 
@@ -57,7 +57,7 @@ dashboard-de-gestao/
 
 ## 📊 Estrutura e Modelagem de Dados
 
-Toda a tipagem e dados do Fluxo residem em [lib/data.ts](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/data.ts) e [lib/context.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/context.tsx).
+Toda a tipagem e dados do Octho residem em [lib/data.ts](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/data.ts) e [lib/context.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/context.tsx).
 
 ### 1. Tipos de Dados Básicos
 * **`Priority`**: Nível de prioridade das tarefas ([lib/data.ts#L1](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/data.ts#L1)).

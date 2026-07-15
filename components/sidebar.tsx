@@ -45,7 +45,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
         <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <Zap className="size-4" />
         </span>
-        <span className="flex-1 text-sm font-semibold text-sidebar-foreground">Fluxo</span>
+        <span className="flex-1 text-sm font-semibold text-sidebar-foreground">Octho</span>
         <ChevronDown className="size-4 text-muted-foreground" />
       </button>
 
