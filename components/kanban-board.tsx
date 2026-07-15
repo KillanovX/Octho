@@ -17,10 +17,10 @@ const priorityConfig: Record<Priority, { icon: typeof SignalHigh; className: str
 }
 
 const avatarMap: Record<string, string> = {
-  MA: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80",
-  FA: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=80",
-  JS: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=80&q=80",
-  RP: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&q=80",
+  MA: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
+  FA: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
+  JS: "https://images.shadcnspace.com/assets/profiles/user-2.jpg",
+  RP: "https://images.shadcnspace.com/assets/profiles/user-4.jpg",
 }
 
 export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {

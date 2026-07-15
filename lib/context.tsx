@@ -33,7 +33,7 @@ export const users: UserProfile[] = [
     email: "marina@fluxo.app",
     avatar: "MA",
     avatarColor: "#10b981",
-    imageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80",
+    imageUrl: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
     verified: true,
   },
   {
@@ -42,7 +42,7 @@ export const users: UserProfile[] = [
     email: "flavio@fluxo.app",
     avatar: "FA",
     avatarColor: "#6366f1",
-    imageUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=80",
+    imageUrl: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
     verified: true,
   },
 ]
