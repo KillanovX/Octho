@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { useApp } from "@/lib/context"
 
 export function WeeklyHoursChart() {
@@ -27,8 +26,6 @@ export function WeeklyHoursChart() {
 
   const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ")
   const areaPath = `${linePath} L ${points[points.length - 1].x} ${height - padY} L ${points[0].x} ${height - padY} Z`
-
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
@@ -73,42 +70,7 @@ export function WeeklyHoursChart() {
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
           />
-
-          {/* Interactive data points */}
-          {points.map((p, i) => (
-            <g key={i}>
-              <circle
-                cx={p.x} cy={p.y} r={hoveredIndex === i ? 5 : 3}
-                fill={hoveredIndex === i ? "var(--primary)" : "var(--card)"}
-                stroke="var(--primary)"
-                strokeWidth="2"
-                vectorEffect="non-scaling-stroke"
-                className="transition-all cursor-pointer"
-                onMouseEnter={() => setHoveredIndex(i)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              />
-            </g>
-          ))}
         </svg>
-
-        {/* Tooltip */}
-        {hoveredIndex !== null && (
-          <div
-            className="pointer-events-none absolute z-10 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs shadow-lg animate-in fade-in duration-100"
-            style={{
-              left: `${(points[hoveredIndex].x / width) * 100}%`,
-              top: "-8px",
-              transform: "translateX(-50%) translateY(-100%)",
-            }}
-          >
-            <p className="font-semibold text-card-foreground">
-              {points[hoveredIndex].day}: {points[hoveredIndex].hours}h
-            </p>
-            <p className="text-muted-foreground">
-              Meta: {points[hoveredIndex].goal}h
-            </p>
-          </div>
-        )}
       </div>
 
       <div className="mt-2 flex justify-between">
@@ -126,15 +88,6 @@ export function WeeklyHoursChart() {
             </div>
           )
         })}
-      </div>
-
-      <div className="mt-4 flex items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span className="h-0.5 w-4 rounded-full bg-primary" /> Horas trabalhadas
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-0 w-4 border-t border-dashed border-border" /> Meta (8h)
-        </span>
       </div>
     </div>
   )
