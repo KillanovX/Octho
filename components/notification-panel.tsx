@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { useApp, timeAgo } from "@/lib/context"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 interface NotificationPanelProps {
   open: boolean
@@ -13,6 +14,13 @@ const userNames: Record<string, string> = {
   JS: "João",
   RP: "Rafa",
   FA: "Flavio",
+}
+
+const avatarMap: Record<string, string> = {
+  MA: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80",
+  FA: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=80",
+  JS: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=80&q=80",
+  RP: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&q=80",
 }
 
 export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
@@ -70,13 +78,12 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
               key={event.id}
               className="flex items-start gap-3 border-b border-border/50 px-4 py-3 transition-colors last:border-b-0 hover:bg-accent/50"
             >
-              {/* User Avatar */}
-              <div
-                className="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
-                style={{ backgroundColor: event.userColor }}
-              >
-                {event.user}
-              </div>
+              <Avatar className="size-8 shrink-0">
+                {avatarMap[event.user] && <AvatarImage src={avatarMap[event.user]} alt={userNames[event.user] ?? event.user} />}
+                <AvatarFallback style={{ backgroundColor: event.userColor, color: "#fff" }} className="text-[11px] font-bold">
+                  {event.user}
+                </AvatarFallback>
+              </Avatar>
 
               {/* Event Content */}
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">

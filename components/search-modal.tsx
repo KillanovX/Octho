@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react"
 import { Search } from "lucide-react"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { useApp, timeAgo } from "@/lib/context"
 import { Task, columns } from "@/lib/data"
 
@@ -17,6 +18,13 @@ const priorityLabels: Record<string, { label: string; color: string }> = {
   medium: { label: "Média", color: "text-yellow-400" },
   low: { label: "Baixa", color: "text-blue-400" },
   none: { label: "—", color: "text-muted-foreground" },
+}
+
+const avatarMap: Record<string, string> = {
+  MA: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80",
+  FA: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=80",
+  JS: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=80&q=80",
+  RP: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&q=80",
 }
 
 export function SearchModal({ open, onClose, onSelectTask }: SearchModalProps) {
@@ -124,13 +132,12 @@ export function SearchModal({ open, onClose, onSelectTask }: SearchModalProps) {
                   onClick={() => handleSelect(task)}
                   className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent"
                 >
-                  {/* Assignee Avatar */}
-                  <div
-                    className="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                    style={{ backgroundColor: task.assigneeColor }}
-                  >
-                    {task.assignee}
-                  </div>
+                  <Avatar className="size-7 shrink-0">
+                    {avatarMap[task.assignee] && <AvatarImage src={avatarMap[task.assignee]} alt={task.assignee} />}
+                    <AvatarFallback style={{ backgroundColor: task.assigneeColor, color: "#fff" }} className="text-[10px] font-bold">
+                      {task.assignee}
+                    </AvatarFallback>
+                  </Avatar>
 
                   {/* Task Info */}
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">

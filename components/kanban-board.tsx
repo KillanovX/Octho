@@ -6,6 +6,7 @@ import { columns, type Priority, type Task, type ColumnId } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/context"
 import { TaskModal } from "@/components/task-modal"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 const priorityConfig: Record<Priority, { icon: typeof SignalHigh; className: string; label: string }> = {
   urgent: { icon: AlertTriangle, className: "text-destructive", label: "Urgente" },
@@ -13,6 +14,13 @@ const priorityConfig: Record<Priority, { icon: typeof SignalHigh; className: str
   medium: { icon: SignalMedium, className: "text-chart-3", label: "Média" },
   low: { icon: SignalLow, className: "text-chart-2", label: "Baixa" },
   none: { icon: Minus, className: "text-muted-foreground", label: "Sem" },
+}
+
+const avatarMap: Record<string, string> = {
+  MA: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80",
+  FA: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=80",
+  JS: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=80&q=80",
+  RP: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&q=80",
 }
 
 export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
@@ -161,13 +169,12 @@ function TaskCard({
           <GripVertical className="size-3 text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100" />
           <span className="font-mono text-xs text-muted-foreground">{task.code}</span>
         </div>
-        <span
-          className="flex size-5 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-          style={{ backgroundColor: task.assigneeColor }}
-          title={task.assignee}
-        >
-          {task.assignee}
-        </span>
+        <Avatar className="size-5 shrink-0">
+          {avatarMap[task.assignee] && <AvatarImage src={avatarMap[task.assignee]} alt={task.assignee} />}
+          <AvatarFallback style={{ backgroundColor: task.assigneeColor, color: "#fff" }} className="text-[9px] font-semibold">
+            {task.assignee}
+          </AvatarFallback>
+        </Avatar>
       </div>
 
       <p className="mt-1.5 text-sm leading-snug text-card-foreground text-pretty">{task.title}</p>

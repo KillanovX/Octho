@@ -22,11 +22,29 @@ export type UserProfile = {
   email: string
   avatar: string
   avatarColor: string
+  imageUrl?: string
+  verified?: boolean
 }
 
 export const users: UserProfile[] = [
-  { id: "MA", name: "Marina Alves", email: "marina@fluxo.app", avatar: "MA", avatarColor: "#10b981" },
-  { id: "FA", name: "Flavio Alves", email: "flavio@fluxo.app", avatar: "FA", avatarColor: "#6366f1" },
+  {
+    id: "MA",
+    name: "Marina Alves",
+    email: "marina@fluxo.app",
+    avatar: "MA",
+    avatarColor: "#10b981",
+    imageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80",
+    verified: true,
+  },
+  {
+    id: "FA",
+    name: "Flavio Alves",
+    email: "flavio@fluxo.app",
+    avatar: "FA",
+    avatarColor: "#6366f1",
+    imageUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=80",
+    verified: true,
+  },
 ]
 
 // ─── Views ──────────────────────────────────────────────────

@@ -4,12 +4,20 @@ import { useState } from "react"
 import { useApp, timeAgo } from "@/lib/context"
 import { TaskModal } from "@/components/task-modal"
 import type { Task } from "@/lib/data"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 const nameMap: Record<string, string> = {
   MA: "Marina",
   JS: "João",
   RP: "Rafa",
   FA: "Flavio",
+}
+
+const avatarMap: Record<string, string> = {
+  MA: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=80&q=80",
+  FA: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=80",
+  JS: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=80&q=80",
+  RP: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&q=80",
 }
 
 export function ActivityFeed() {
@@ -39,12 +47,12 @@ export function ActivityFeed() {
                 {i !== Math.min(activityFeed.length, 10) - 1 && (
                   <span className="absolute left-3.5 top-8 h-full w-px bg-border" aria-hidden />
                 )}
-                <span
-                  className="z-10 flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-                  style={{ backgroundColor: e.userColor }}
-                >
-                  {e.user}
-                </span>
+                <Avatar className="z-10 size-7 shrink-0">
+                  {avatarMap[e.user] && <AvatarImage src={avatarMap[e.user]} alt={nameMap[e.user] ?? e.user} />}
+                  <AvatarFallback style={{ backgroundColor: e.userColor, color: "#fff" }} className="text-[10px] font-semibold">
+                    {e.user}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="min-w-0 flex-1">
                   <button
                     onClick={() => handleClickEvent(e.target)}

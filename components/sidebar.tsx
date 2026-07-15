@@ -13,9 +13,11 @@ import {
   Search,
   ChevronDown,
   Zap,
+  VerifiedIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp, users, type ViewId } from "@/lib/context"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 type NavDef = { name: string; icon: typeof Inbox; view: ViewId; badge?: string }
 
@@ -112,13 +114,20 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
                     currentUser.id === u.id && "bg-sidebar-accent font-medium"
                   )}
                 >
-                  <span
-                    className="flex size-6 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-                    style={{ backgroundColor: u.avatarColor }}
-                  >
-                    {u.avatar}
-                  </span>
-                  <div className="min-w-0 flex-1">
+                  <div className="relative shrink-0">
+                    <Avatar className="size-6">
+                      {u.imageUrl && <AvatarImage src={u.imageUrl} alt={u.name} />}
+                      <AvatarFallback style={{ backgroundColor: u.avatarColor, color: "#fff" }} className="text-[10px] font-semibold">
+                        {u.avatar}
+                      </AvatarFallback>
+                    </Avatar>
+                    {u.verified && (
+                      <span className="absolute -right-0.5 -bottom-0.5 flex size-2 items-center justify-center rounded-full bg-sidebar">
+                        <VerifiedIcon className="size-full fill-blue-500 text-white" />
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
                     <p className="truncate font-medium text-foreground">{u.name}</p>
                     <p className="truncate text-[10px] text-muted-foreground">{u.email}</p>
                   </div>
@@ -132,12 +141,19 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
           onClick={() => setShowSwitcher(!showSwitcher)}
           className="mt-3 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent"
         >
-          <span
-            className="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-            style={{ backgroundColor: currentUser.avatarColor }}
-          >
-            {currentUser.avatar}
-          </span>
+          <div className="relative shrink-0">
+            <Avatar className="size-7">
+              {currentUser.imageUrl && <AvatarImage src={currentUser.imageUrl} alt={currentUser.name} />}
+              <AvatarFallback style={{ backgroundColor: currentUser.avatarColor, color: "#fff" }} className="text-xs font-semibold">
+                {currentUser.avatar}
+              </AvatarFallback>
+            </Avatar>
+            {currentUser.verified && (
+              <span className="absolute -right-0.5 -bottom-0.5 flex size-2.5 items-center justify-center rounded-full bg-sidebar">
+                <VerifiedIcon className="size-full fill-blue-500 text-white" />
+              </span>
+            )}
+          </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-sidebar-foreground">{currentUser.name}</p>
             <p className="truncate text-xs text-muted-foreground">{currentUser.email}</p>
