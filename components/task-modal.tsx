@@ -31,7 +31,7 @@ type TaskModalProps = {
   defaultColumn?: ColumnId
 }
 
-export default function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps) {
+export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps) {
   const { addTask, updateTask, deleteTask, currentUser } = useApp()
 
   const isEdit = !!task
