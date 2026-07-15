@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useApp } from "@/lib/context"
 
 export function WeeklyHoursChart() {
@@ -11,7 +12,6 @@ export function WeeklyHoursChart() {
   const goalDays = weeklyHours.filter((d) => d.goal > 0).length
   const avg = goalDays > 0 ? total / goalDays : 0
 
-  // chart geometry
   const width = 320
   const height = 128
   const padX = 8
@@ -28,6 +28,8 @@ export function WeeklyHoursChart() {
   const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ")
   const areaPath = `${linePath} L ${points[points.length - 1].x} ${height - padY} L ${points[0].x} ${height - padY} Z`
 
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-start justify-between">
@@ -41,7 +43,7 @@ export function WeeklyHoursChart() {
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 relative">
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="h-32 w-full overflow-visible"
@@ -56,15 +58,9 @@ export function WeeklyHoursChart() {
             </linearGradient>
           </defs>
 
-          {/* meta gridline (8h) */}
           <line
-            x1={padX}
-            y1={padY}
-            x2={width - padX}
-            y2={padY}
-            stroke="var(--border)"
-            strokeWidth="1"
-            strokeDasharray="3 3"
+            x1={padX} y1={padY} x2={width - padX} y2={padY}
+            stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"
           />
 
           <path d={areaPath} fill="url(#areaFill)" />
@@ -77,24 +73,59 @@ export function WeeklyHoursChart() {
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
           />
+
+          {/* Interactive data points */}
+          {points.map((p, i) => (
+            <g key={i}>
+              <circle
+                cx={p.x} cy={p.y} r={hoveredIndex === i ? 5 : 3}
+                fill={hoveredIndex === i ? "var(--primary)" : "var(--card)"}
+                stroke="var(--primary)"
+                strokeWidth="2"
+                vectorEffect="non-scaling-stroke"
+                className="transition-all cursor-pointer"
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              />
+            </g>
+          ))}
         </svg>
 
-        <div className="mt-2 flex justify-between">
-          {weeklyHours.map((d) => {
-            const reached = d.goal > 0 && d.hours >= d.goal
-            return (
-              <div key={d.day} className="flex flex-col items-center gap-0.5">
-                <span className="text-xs font-medium text-muted-foreground">{d.day}</span>
-                <span
-                  className="text-xs font-medium tabular-nums"
-                  style={{ color: reached ? "var(--chart-4)" : "var(--card-foreground)" }}
-                >
-                  {d.hours}h
-                </span>
-              </div>
-            )
-          })}
-        </div>
+        {/* Tooltip */}
+        {hoveredIndex !== null && (
+          <div
+            className="pointer-events-none absolute z-10 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs shadow-lg animate-in fade-in duration-100"
+            style={{
+              left: `${(points[hoveredIndex].x / width) * 100}%`,
+              top: "-8px",
+              transform: "translateX(-50%) translateY(-100%)",
+            }}
+          >
+            <p className="font-semibold text-card-foreground">
+              {points[hoveredIndex].day}: {points[hoveredIndex].hours}h
+            </p>
+            <p className="text-muted-foreground">
+              Meta: {points[hoveredIndex].goal}h
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-2 flex justify-between">
+        {weeklyHours.map((d) => {
+          const reached = d.goal > 0 && d.hours >= d.goal
+          return (
+            <div key={d.day} className="flex flex-col items-center gap-0.5">
+              <span className="text-xs font-medium text-muted-foreground">{d.day}</span>
+              <span
+                className="text-xs font-medium tabular-nums"
+                style={{ color: reached ? "var(--chart-4)" : "var(--card-foreground)" }}
+              >
+                {d.hours}h
+              </span>
+            </div>
+          )
+        })}
       </div>
 
       <div className="mt-4 flex items-center gap-4 border-t border-border pt-3 text-xs text-muted-foreground">

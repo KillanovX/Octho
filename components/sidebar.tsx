@@ -15,24 +15,25 @@ import {
   Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useApp, users } from "@/lib/context"
+import { useApp, users, type ViewId } from "@/lib/context"
 
-const nav = [
-  { name: "Dashboard", icon: LayoutDashboard, active: true },
-  { name: "Caixa de entrada", icon: Inbox, badge: "8" },
-  { name: "Minhas tarefas", icon: CircleUser },
+type NavDef = { name: string; icon: typeof Inbox; view: ViewId; badge?: string }
+
+const nav: NavDef[] = [
+  { name: "Dashboard", icon: LayoutDashboard, view: "dashboard" },
+  { name: "Caixa de entrada", icon: Inbox, view: "inbox" },
+  { name: "Minhas tarefas", icon: CircleUser, view: "my-tasks" },
 ]
 
-const workspace = [
-  { name: "Quadro Kanban", icon: KanbanSquare },
-  { name: "Projetos", icon: Layers },
-  { name: "Registro de horas", icon: Clock },
-  { name: "Relatórios", icon: BarChart3 },
+const workspace: NavDef[] = [
+  { name: "Quadro Kanban", icon: KanbanSquare, view: "kanban" },
+  { name: "Projetos", icon: Layers, view: "projects" },
+  { name: "Registro de horas", icon: Clock, view: "time-log" },
+  { name: "Relatórios", icon: BarChart3, view: "reports" },
 ]
 
-export function Sidebar() {
-  const [active, setActive] = useState("Dashboard")
-  const { currentUser, setCurrentUser } = useApp()
+export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
+  const { activeView, setActiveView, currentUser, setCurrentUser, unreadCount } = useApp()
   const [showSwitcher, setShowSwitcher] = useState(false)
 
   return (
@@ -47,7 +48,10 @@ export function Sidebar() {
       </button>
 
       {/* Search */}
-      <button className="mb-4 flex items-center gap-2 rounded-md border border-sidebar-border bg-background/50 px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent">
+      <button
+        onClick={onOpenSearch}
+        className="mb-4 flex items-center gap-2 rounded-md border border-sidebar-border bg-background/50 px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent"
+      >
         <Search className="size-4" />
         <span>Buscar</span>
         <kbd className="ml-auto rounded border border-border px-1.5 font-mono text-[10px]">⌘K</kbd>
@@ -59,9 +63,9 @@ export function Sidebar() {
             key={item.name}
             icon={item.icon}
             label={item.name}
-            badge={item.badge}
-            active={active === item.name}
-            onClick={() => setActive(item.name)}
+            badge={item.view === "inbox" && unreadCount > 0 ? String(unreadCount) : undefined}
+            active={activeView === item.view}
+            onClick={() => setActiveView(item.view)}
           />
         ))}
       </nav>
@@ -75,15 +79,20 @@ export function Sidebar() {
             key={item.name}
             icon={item.icon}
             label={item.name}
-            active={active === item.name}
-            onClick={() => setActive(item.name)}
+            active={activeView === item.view}
+            onClick={() => setActiveView(item.view)}
           />
         ))}
       </nav>
 
       <div className="mt-auto relative">
-        <NavItem icon={Settings} label="Configurações" active={false} onClick={() => {}} />
-        
+        <NavItem
+          icon={Settings}
+          label="Configurações"
+          active={activeView === "settings"}
+          onClick={() => setActiveView("settings")}
+        />
+
         {/* User Switcher Popover */}
         {showSwitcher && (
           <div className="absolute bottom-12 left-0 right-0 z-50 mb-2 rounded-lg border border-border bg-card p-2 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-150">
@@ -133,7 +142,10 @@ export function Sidebar() {
             <p className="truncate text-sm font-medium text-sidebar-foreground">{currentUser.name}</p>
             <p className="truncate text-xs text-muted-foreground">{currentUser.email}</p>
           </div>
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200" style={{ transform: showSwitcher ? "rotate(180deg)" : "none" }} />
+          <ChevronDown
+            className="size-4 shrink-0 text-muted-foreground transition-transform duration-200"
+            style={{ transform: showSwitcher ? "rotate(180deg)" : "none" }}
+          />
         </button>
       </div>
     </aside>
