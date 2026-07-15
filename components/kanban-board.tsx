@@ -30,27 +30,51 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [createColumn, setCreateColumn] = useState<ColumnId | null>(null)
   const [dragOverCol, setDragOverCol] = useState<ColumnId | null>(null)
+  const [dragOverCardId, setDragOverCardId] = useState<string | null>(null)
 
   const handleDragStart = (e: DragEvent, taskId: string) => {
     e.dataTransfer.setData("text/plain", taskId)
     e.dataTransfer.effectAllowed = "move"
   }
 
-  const handleDragOver = (e: DragEvent, colId: ColumnId) => {
+  const handleDragOverColumn = (e: DragEvent, colId: ColumnId) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = "move"
     setDragOverCol(colId)
   }
 
-  const handleDragLeave = () => {
+  const handleDragLeaveColumn = () => {
     setDragOverCol(null)
+    setDragOverCardId(null)
   }
 
-  const handleDrop = (e: DragEvent, colId: ColumnId) => {
+  const handleDropColumn = (e: DragEvent, colId: ColumnId) => {
     e.preventDefault()
     const taskId = e.dataTransfer.getData("text/plain")
-    if (taskId) moveTask(taskId, colId)
+    if (taskId) {
+      moveTask(taskId, colId)
+    }
     setDragOverCol(null)
+    setDragOverCardId(null)
+  }
+
+  const handleDragOverCard = (e: DragEvent, overTaskId: string, colId: ColumnId) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = "move"
+    setDragOverCol(colId)
+    setDragOverCardId(overTaskId)
+  }
+
+  const handleDropCard = (e: DragEvent, overTaskId: string, colId: ColumnId) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const taskId = e.dataTransfer.getData("text/plain")
+    if (taskId && taskId !== overTaskId) {
+      moveTask(taskId, colId, overTaskId)
+    }
+    setDragOverCol(null)
+    setDragOverCardId(null)
   }
 
   return (
@@ -97,9 +121,9 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
                     "flex flex-col gap-2 min-h-[120px] rounded-lg p-1 transition-colors",
                     isDragOver ? "bg-primary/10 ring-2 ring-primary/30" : "bg-accent/20"
                   )}
-                  onDragOver={(e) => handleDragOver(e, col.id)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, col.id)}
+                  onDragOver={(e) => handleDragOverColumn(e, col.id)}
+                  onDragLeave={handleDragLeaveColumn}
+                  onDrop={(e) => handleDropColumn(e, col.id)}
                 >
                   {colTasks.length > 0 ? (
                     colTasks.map((t) => (
@@ -108,6 +132,9 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
                         task={t}
                         onEdit={() => setEditTask(t)}
                         onDragStart={handleDragStart}
+                        onDragOverCard={handleDragOverCard}
+                        onDropCard={handleDropCard}
+                        isDragOver={dragOverCardId === t.id}
                       />
                     ))
                   ) : (
@@ -150,10 +177,16 @@ function TaskCard({
   task,
   onEdit,
   onDragStart,
+  onDragOverCard,
+  onDropCard,
+  isDragOver,
 }: {
   task: Task
   onEdit: () => void
   onDragStart: (e: DragEvent, taskId: string) => void
+  onDragOverCard: (e: DragEvent, overTaskId: string, colId: ColumnId) => void
+  onDropCard: (e: DragEvent, overTaskId: string, colId: ColumnId) => void
+  isDragOver: boolean
 }) {
   const p = priorityConfig[task.priority]
 
@@ -161,8 +194,13 @@ function TaskCard({
     <article
       draggable
       onDragStart={(e) => onDragStart(e, task.id)}
+      onDragOver={(e) => onDragOverCard(e, task.id, task.column)}
+      onDrop={(e) => onDropCard(e, task.id, task.column)}
       onClick={onEdit}
-      className="group cursor-pointer rounded-lg border border-border bg-background p-3 transition-all hover:border-primary/40 hover:shadow-sm active:opacity-75"
+      className={cn(
+        "group cursor-pointer rounded-lg border border-border bg-background p-3 transition-all hover:border-primary/40 hover:shadow-sm active:opacity-75",
+        isDragOver && "border-t-2 border-t-primary pt-2.5"
+      )}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">

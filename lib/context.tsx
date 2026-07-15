@@ -80,7 +80,7 @@ type AppContextType = {
   addTask: (task: Omit<Task, "id" | "code">) => void
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
-  moveTask: (id: string, column: ColumnId) => void
+  moveTask: (id: string, column: ColumnId, overTaskId?: string) => void
   // Timer
   timer: TimerState
   startTimer: (taskId: string, taskCode: string) => void
@@ -366,16 +366,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [mutateData, logActivity, userData.tasks])
 
-  const moveTask = useCallback((id: string, column: ColumnId) => {
+  const moveTask = useCallback((id: string, column: ColumnId, overTaskId?: string) => {
     const task = userData.tasks.find(t => t.id === id)
-    if (!task || task.column === column) return
+    if (!task) return
     const colName = columns.find(c => c.id === column)?.name ?? column
-    mutateData(prev => ({
-      ...prev,
-      tasks: prev.tasks.map(t => t.id === id ? { ...t, column } : t),
-    }))
-    logActivity(`moveu para ${colName}`, `${task.code} — ${task.title}`)
-    saveTaskToSupabase(currentUser.id, { ...task, column })
+
+    mutateData(prev => {
+      const activeTask = prev.tasks.find(t => t.id === id)
+      if (!activeTask) return prev
+
+      const cleanTasks = prev.tasks.filter(t => t.id !== id)
+
+      let insertIndex = cleanTasks.length
+      if (overTaskId) {
+        const idx = cleanTasks.findIndex(t => t.id === overTaskId)
+        if (idx !== -1) {
+          insertIndex = idx
+        }
+      }
+
+      const updatedTask = { ...activeTask, column }
+      const newTasks = [...cleanTasks]
+      newTasks.splice(insertIndex, 0, updatedTask)
+
+      saveTaskToSupabase(currentUser.id, updatedTask)
+
+      return {
+        ...prev,
+        tasks: newTasks,
+      }
+    })
+
+    if (task.column !== column) {
+      logActivity(`moveu para ${colName}`, `${task.code} — ${task.title}`)
+    } else {
+      logActivity(`reordenou`, `${task.code} — ${task.title}`)
+    }
   }, [currentUser.id, mutateData, logActivity, userData.tasks])
 
   // ── Timer ──
