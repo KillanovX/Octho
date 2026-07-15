@@ -6,7 +6,7 @@ Este documento serve como a **Fonte de Verdade (Source of Truth)** do aplicativo
 
 ## 🚀 Visão Geral do Projeto
 
-O **Fluxo** é um dashboard de gestão de tarefas e horas projetado para equipes de desenvolvimento e design. Ele permite acompanhar o andamento de demandas em um quadro Kanban, contabilizar horas trabalhadas em tempo real via cronômetro ativo e visualizar estatísticas e métricas de produtividade.
+O **Fluxo** é um dashboard de gestão de tarefas e horas projetado para equipes de desenvolvimento e design. Ele permite acompanhar o andamento de demandas em um quadro Kanban, contabilizar horas trabalhadas em tempo real via cronômetro ativo, gerenciar múltiplos usuários com sessões isoladas de dados e visualizar estatísticas e métricas de produtividade.
 
 ---
 
@@ -31,20 +31,21 @@ A estrutura organizada do repositório é detalhada abaixo:
 dashboard-de-gestao/
 ├── app/                      # Rotas e Páginas do Next.js (App Router)
 │   ├── globals.css           # Variáveis CSS customizadas (OKLCH), temas e estilos globais
-│   ├── layout.tsx            # Layout raiz (configuração de fontes, metadados e Vercel Analytics)
-│   └── page.tsx              # Página inicial principal do Dashboard
-├── components/               # Componentes de interface modulares
+│   ├── layout.tsx            # Layout raiz (configura com AppProvider, fontes, metadados e Vercel Analytics)
+│   └── page.tsx              # Página inicial principal do Dashboard (Client Component)
+├── components/               # Componentes de interface modulares (Client Components reativos)
 │   ├── ui/                   # Primitivos de UI reaproveitáveis (Shadcn)
 │   │   └── button.tsx        # Botão customizado com variantes de estilo
-│   ├── activity-breakdown.tsx# Distribuição mensal de horas por atividade (barra empilhada)
-│   ├── activity-feed.tsx     # Linha do tempo com atividades recentes do time
+│   ├── activity-breakdown.tsx# Distribuição mensal de horas por atividade (barra empilhada do usuário ativo)
+│   ├── activity-feed.tsx     # Linha do tempo com atividades recentes do usuário ativo
 │   ├── dashboard-header.tsx  # Cabeçalho com saudação dinâmica, data atual e cronômetro em tempo real
-│   ├── kanban-board.tsx      # Quadro Kanban com colunas e cards de tarefas detalhados
-│   ├── sidebar.tsx           # Barra de navegação lateral (Workspace e perfil do usuário)
-│   ├── stat-cards.tsx        # Indicadores numéricos de desempenho com percentuais de tendência
-│   └── weekly-hours-chart.tsx# Gráfico SVG interativo de linha/área das horas semanais
-├── lib/                      # Utilitários e armazenamento de dados estáticos
-│   ├── data.ts               # Tipagens TypeScript (Task, Event, etc.) e dados mockados
+│   ├── kanban-board.tsx      # Quadro Kanban com colunas e cards de tarefas do usuário ativo
+│   ├── sidebar.tsx           # Barra de navegação lateral (Workspace e seletor popover de usuário)
+│   ├── stat-cards.tsx        # Indicadores numéricos de desempenho reativos do usuário ativo
+│   └── weekly-hours-chart.tsx# Gráfico SVG interativo de linha/área das horas semanais do usuário
+├── lib/                      # Utilitários e armazenamento de dados
+│   ├── context.tsx           # Contexto React (AppProvider / useApp) para controle de sessão e dados isolados
+│   ├── data.ts               # Tipagens básicas do TypeScript e arrays estáticos de exemplo (mock)
 │   └── utils.ts              # Função utilitária cn (Tailwind Merge + Clsx)
 ├── public/                   # Recursos estáticos (Logos, ícones de aba e imagens)
 ├── components.json           # Configuração de componentes Shadcn (estilo base-nova)
@@ -56,7 +57,7 @@ dashboard-de-gestao/
 
 ## 📊 Estrutura e Modelagem de Dados
 
-Toda a tipagem e dados do Fluxo residem em [lib/data.ts](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/data.ts).
+Toda a tipagem e dados do Fluxo residem em [lib/data.ts](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/data.ts) e [lib/context.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/context.tsx).
 
 ### 1. Tipos de Dados Básicos
 * **`Priority`**: Nível de prioridade das tarefas ([lib/data.ts#L1](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/data.ts#L1)).
@@ -70,104 +71,94 @@ Toda a tipagem e dados do Fluxo residem em [lib/data.ts](file:///c:/Users/flavio
 * **`Label`**: Rótulo para categorização de tarefas (ex: Frontend, Design, Bug) ([lib/data.ts#L5](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/data.ts#L5)).
   ```typescript
   type Label = {
-    name: string
-    color: string // Cor hex para o indicador visual
+    name: string;
+    color: string;
   }
   ```
 
-### 2. Modelo de Tarefa (`Task`)
-Representa cada item no Kanban ([lib/data.ts#L10](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/data.ts#L10)):
+### 2. Perfis de Usuário (`UserProfile`)
+Define os metadados dos perfis mapeados no sistema ([lib/context.tsx#L12](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/context.tsx#L12)):
 ```typescript
-type Task = {
-  id: string
-  code: string            // Ex: "FLX-179"
-  title: string           // Descrição sucinta da tarefa
-  column: ColumnId        // Coluna atual
-  priority: Priority      // Prioridade
-  labels: Label[]         // Tags atribuídas
-  assignee: string        // Iniciais do responsável (ex: "MA")
-  assigneeColor: string   // Cor do avatar do responsável
-  hoursLogged: number     // Horas já trabalhadas registradas
-  estimate: number        // Horas estimadas para conclusão
+type UserProfile = {
+  id: string;            // Ex: "MA", "FA"
+  name: string;          // Nome completo do usuário
+  email: string;         // E-mail corporativo
+  avatar: string;        // Iniciais do avatar
+  avatarColor: string;   // Cor de fundo do círculo do avatar
 }
 ```
 
-### 3. Modelo de Evento (`ActivityEvent`)
-Utilizado para alimentar a linha do tempo de atividades recentes ([lib/data.ts#L242](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/data.ts#L242)):
+### 3. Modelo de Dados de Usuário (`UserData`)
+Contém o estado isolado dos dados de cada perfil ([lib/context.tsx#L35](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/context.tsx#L35)):
 ```typescript
-type ActivityEvent = {
-  id: string
-  user: string            // Iniciais do usuário
-  userColor: string       // Cor de fundo do avatar
-  action: string          // Ação executada (ex: "concluiu", "moveu")
-  target: string          // Alvo da ação (ex: "FLX-244 — Links de compra")
-  time: string            // Tempo decorrido amigável (ex: "há 12 min")
+type UserData = {
+  tasks: Task[];
+  weeklyHours: typeof sampleWeeklyHours;
+  activityBreakdown: typeof sampleActivityBreakdown;
+  activityFeed: ActivityEvent[];
+  hoursMonth: number;
+  completedTasksMonth: number;
 }
 ```
 
 ---
 
+## 🔄 Estado Global & Troca de Sessões
+
+O controle de sessão é feito via **React Context** ([lib/context.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/context.tsx)). A aplicação inicializa os dados de forma isolada para cada perfil:
+
+1. **Marina Alves (`MA` - Usuário Teste):** Carrega as 15 tarefas pré-definidas no Kanban, histórico de horas da semana ativa (Seg a Sáb), distribuição de atividades do mês e feed com histórico recente de comentários e movimentações.
+2. **Flavio Alves (`FA` - Usuário Real):** Inicializado sem dados de exemplo. O Kanban começa vazio, as horas do mês/semana são iniciadas em zero e o feed de atividades encontra-se limpo.
+
+O estado do aplicativo é mantido sob um dicionário no React, garantindo que as modificações e interações efetuadas sob a sessão de um usuário não sejam perdidas ou vazadas para o outro ao alternar entre perfis.
+
+---
+
 ## 🎨 Componentes e Interface do Usuário
 
-O dashboard é montado modularmente em [app/page.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/app/page.tsx):
-
 ### 1. Barra Lateral ([components/sidebar.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/components/sidebar.tsx))
-* **Seletor de Workspace**: Botão interativo para alterar o espaço ativo com ícone `Zap`.
+* **Seletor de Workspace**: Botão decorativo para alterar o espaço ativo com ícone `Zap`.
 * **Caixa de Busca**: Atalho visual (simulação de `⌘K`).
-* **Menu de Navegação Principal**:
-  * *Dashboard* (Ativo por padrão)
-  * *Caixa de entrada* (Exibe um badge de notificação de `8` mensagens pendentes)
-  * *Minhas tarefas*
+* **Menu de Navegação Principal**: *Dashboard*, *Caixa de entrada* (com badge de `8` mensagens) e *Minhas tarefas*.
 * **Menu de Workspace**: Links rápidos para *Quadro Kanban*, *Projetos*, *Registro de horas* e *Relatórios*.
-* **Perfil do Usuário**: Focado na usuária **Marina Alves** (`marina@fluxo.app`) com iniciais `MA` em um avatar circular.
+* **Menu de Troca de Usuários (Rodapé)**: 
+  * Clicar sobre o perfil do usuário abre um popover suspenso flutuante (`absolute z-50`).
+  * O popover exibe a lista de usuários cadastrados (**Marina Alves** e **Flavio Alves**) permitindo a alternância de perfil em tempo real com um clique.
 
 ### 2. Cabeçalho ([components/dashboard-header.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/components/dashboard-header.tsx))
-* **Saudação Dinâmica**: Mostra "Bom dia, Marina" e a data atual formatada em português brasileiro (`pt-BR`).
+* **Saudação Dinâmica**: Mostra "Bom dia, [Nome]" correspondendo ao usuário logado no momento e a data atual por extenso (`pt-BR`).
 * **Cronômetro de Tarefa Ativa**:
   * Funcionalidade de temporizador em tempo real atualizado a cada 1 segundo via React `useEffect`.
-  * Rastreia a tarefa ativa **FLX-243** por padrão.
-  * Inicializado em 2h 14m. Permite pausar e retomar a contagem clicando no botão circular correspondente.
-* **Notificações**: Botão de sino com estado de *hover*.
-* **Criação de Demandas**: Botão de ação rápida "Nova tarefa".
+  * Rastreia a tarefa ativa **FLX-243** por padrão (inicializado em 2h 14m), permitindo pausar e retomar a contagem.
 
 ### 3. Cartões de Estatísticas ([components/stat-cards.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/components/stat-cards.tsx))
-Exibe quatro blocos contendo métricas chave e as respectivas tendências percentuais:
-1. **Horas hoje**: `6h 48m` (Meta: 8h | +12% vs. ontem)
-2. **Horas no mês**: `138h` (Meta: 160h | +8% vs. mês anterior)
-3. **Tarefas concluídas**: `24` (Neste mês | +15% vs. mês anterior)
-4. **Tarefas ativas**: `12` (Detalhadas em 4 a fazer e 4 em progresso | -6% vs. semana passada)
+Calcula dinamicamente as métricas com base no usuário selecionado:
+* **Horas hoje**: Busca as horas do dia da semana atual com base na tabela semanal do usuário ativo, formatando no padrão `Xh Ym` (ex: `8.1h` vira `8h 6m`).
+* **Horas no mês**: Lê o total mensal de horas do usuário atual.
+* **Tarefas concluídas**: Mostra a estatística de demandas concluídas no mês.
+* **Tarefas ativas**: Mostra a contagem de tarefas em aberto (`tasks.filter(t => t.column !== 'done')`) detalhando dinamicamente quantas estão *a fazer* e *em progresso*.
+* **Tendências**: Exibe tendências percentuais comparativas para o usuário Marina Alves e esconde o bloco de tendências para Flavio Alves exibindo o aviso "Sem dados".
 
 ### 4. Gráfico Semanal ([components/weekly-hours-chart.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/components/weekly-hours-chart.tsx))
-* Um gráfico de linhas e área desenhado puramente em **SVG nativo** para desempenho máximo.
-* Desenha um gradiente de preenchimento (`linearGradient` com ID `#areaFill`) sob a linha de horas.
+* Gráfico de linhas e área desenhado em **SVG nativo** reativo à semana ativa do usuário logado.
+* Desenha um gradiente de preenchimento (`#areaFill`) sob a linha de horas.
 * Apresenta uma linha tracejada horizontal de referência indicando a meta padrão de 8 horas diárias.
-* Calcula dinamicamente o total de horas acumulado nos 7 dias da semana (`weeklyHours` de [lib/data.ts#L223](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/lib/data.ts#L223)) e a média diária.
-* Realça os valores de horas em verde (`var(--chart-4)`) nos dias em que a meta foi atingida ou superada (Ex: Quarta-feira com `8.1h`).
+* Calcula dinamicamente o total de horas acumulado e a média diária de horas registradas.
 
 ### 5. Distribuição de Atividades ([components/activity-breakdown.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/components/activity-breakdown.tsx))
-* Exibe a divisão percentual e em horas das atividades desenvolvidas durante o mês atual:
-  * **Frontend**: 42h (32%)
-  * **Design**: 28h (21%)
-  * **Backend**: 34h (26%)
-  * **Conteúdo**: 19h (14%)
-  * **Reuniões**: 15h (11%)
-* Utiliza uma barra horizontal empilhada colorida dinamicamente baseada nos pesos das horas de cada item.
+* Exibe a divisão percentual e em horas das atividades desenvolvidas durante o mês atual (Frontend, Design, Backend, Conteúdo, Reuniões).
+* Utiliza uma barra horizontal empilhada colorida dinamicamente baseada nos pesos das horas de cada item. 
+* Contém validação para evitar erros de divisão por zero quando as horas do usuário são `0` (exibe uma barra de estado cinza vazia e percentual `0%`).
 
 ### 6. Quadro Kanban ([components/kanban-board.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/components/kanban-board.tsx))
-Agrupa e renderiza os cards de tarefas nas quatro colunas de fluxo:
-1. **Backlog** (Indicador cinza)
-2. **A fazer** (*Todo* - Indicador azul claro/ciano)
-3. **Em progresso** (*In Progress* - Indicador amarelo/laranja)
-4. **Concluído** (*Done* - Indicador verde)
-* Cada coluna exibe a contagem total de itens e a soma total de horas logadas nas tarefas contidas ali.
-* Os cards das tarefas (`TaskCard`) incluem o código identficador, título amigável, iniciais com cor exclusiva do responsável, ícones de prioridade customizados (triângulo de alerta para urgente, barras de sinal para os demais) e indicação de horas logadas vs. estimadas (ex: `2.5/4h`).
+Renderiza os cards de tarefas nas quatro colunas de fluxo: *Backlog*, *A fazer*, *Em progresso* e *Concluído*.
+* Cada coluna exibe a contagem de itens e a soma total de horas logadas nas tarefas contidas ali.
+* Exibe um placeholder pontilhado com a mensagem "Sem tarefas" para colunas vazias.
 
 ### 7. Feed de Atividade ([components/activity-feed.tsx](file:///c:/Users/flavio.alves.SOOW/Downloads/dashboard-de-gestao/components/activity-feed.tsx))
-* Linha do tempo vertical exibindo as últimas interações da equipe.
-* Mapeia as iniciais do banco de dados para nomes completos reais:
-  * `MA` $\rightarrow$ **Marina**
-  * `JS` $\rightarrow$ **João**
-  * `RP` (ou outros) $\rightarrow$ **Rafa**
+* Linha do tempo vertical exibindo as últimas interações. 
+* Mapeia as iniciais do banco de dados para nomes completos reais (`MA` $\rightarrow$ Marina, `JS` $\rightarrow$ João, `FA` $\rightarrow$ Flavio, `RP` $\rightarrow$ Rafa).
+* Exibe um placeholder amigável se o usuário não possuir eventos.
 
 ---
 
@@ -188,21 +179,25 @@ O aplicativo adota a nova especificação de cores **OKLCH** definida no [app/gl
 
 ## 🛠️ Comandos de Execução
 
-No terminal, você pode rodar os seguintes comandos usando `pnpm`:
+No terminal, você pode rodar os seguintes comandos usando `npm` ou `pnpm`:
 
+* **Instalar dependências:**
+  ```bash
+  npm install
+  ```
 * **Iniciar Ambiente de Desenvolvimento:**
   ```bash
-  pnpm dev
+  npm run dev
   ```
 * **Compilar para Produção:**
   ```bash
-  pnpm build
+  npm run build
   ```
 * **Iniciar Servidor de Produção (pós-build):**
   ```bash
-  pnpm start
+  npm run start
   ```
 * **Executar Linter de Código:**
   ```bash
-  pnpm lint
+  npm run lint
   ```
