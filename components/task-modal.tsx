@@ -1,9 +1,11 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from "react"
-import { X } from "lucide-react"
+import { X, AlertTriangle, SignalHigh, SignalMedium, SignalLow, Minus } from "lucide-react"
 import { Task, ColumnId, Priority, Label, columns } from "@/lib/data"
 import { useApp } from "@/lib/context"
+import { Select, SelectOption } from "@/components/ui/select"
+import { cn } from "@/lib/utils"
 
 // ─── Available labels ───────────────────────────────────────
 const availableLabels: Label[] = [
@@ -15,12 +17,51 @@ const availableLabels: Label[] = [
   { name: "Pesquisa", color: "#14b8a6" },
 ]
 
-const priorityOptions: { value: Priority; label: string }[] = [
-  { value: "urgent", label: "Urgente" },
-  { value: "high", label: "Alta" },
-  { value: "medium", label: "Média" },
-  { value: "low", label: "Baixa" },
-  { value: "none", label: "Sem" },
+const columnOptions: SelectOption<ColumnId>[] = columns.map((col) => ({
+  value: col.id,
+  label: col.name,
+  icon: (
+    <span
+      className={cn(
+        "size-2.5 rounded-full shrink-0",
+        col.id === "backlog"
+          ? "bg-muted-foreground"
+          : col.id === "todo"
+          ? "bg-chart-2"
+          : col.id === "in_progress"
+          ? "bg-chart-3"
+          : "bg-chart-4"
+      )}
+    />
+  ),
+}))
+
+const priorityOptionsList: SelectOption<Priority>[] = [
+  {
+    value: "urgent",
+    label: "Urgente",
+    icon: <AlertTriangle className="size-4 text-destructive shrink-0" />,
+  },
+  {
+    value: "high",
+    label: "Alta",
+    icon: <SignalHigh className="size-4 text-chart-5 shrink-0" />,
+  },
+  {
+    value: "medium",
+    label: "Média",
+    icon: <SignalMedium className="size-4 text-chart-3 shrink-0" />,
+  },
+  {
+    value: "low",
+    label: "Baixa",
+    icon: <SignalLow className="size-4 text-chart-2 shrink-0" />,
+  },
+  {
+    value: "none",
+    label: "Sem prioridade",
+    icon: <Minus className="size-4 text-muted-foreground shrink-0" />,
+  },
 ]
 
 // ─── Props ──────────────────────────────────────────────────
@@ -186,41 +227,25 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
             {/* Coluna + Prioridade (row) */}
             <div className="grid grid-cols-2 gap-4">
               {/* Coluna */}
-              <div className="space-y-1.5">
-                <label htmlFor="task-column" className="text-sm font-medium text-foreground">
-                  Coluna
-                </label>
-                <select
+              <div>
+                <Select<ColumnId>
                   id="task-column"
+                  label="Coluna"
                   value={column}
-                  onChange={(e) => setColumn(e.target.value as ColumnId)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow appearance-none"
-                >
-                  {columns.map((col) => (
-                    <option key={col.id} value={col.id}>
-                      {col.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setColumn(val)}
+                  options={columnOptions}
+                />
               </div>
 
               {/* Prioridade */}
-              <div className="space-y-1.5">
-                <label htmlFor="task-priority" className="text-sm font-medium text-foreground">
-                  Prioridade
-                </label>
-                <select
+              <div>
+                <Select<Priority>
                   id="task-priority"
+                  label="Prioridade"
                   value={priority}
-                  onChange={(e) => setPriority(e.target.value as Priority)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow appearance-none"
-                >
-                  {priorityOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setPriority(val)}
+                  options={priorityOptionsList}
+                />
               </div>
             </div>
 

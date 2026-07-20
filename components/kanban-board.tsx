@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, DragEvent } from "react"
-import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus, GripVertical } from "lucide-react"
+import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus, GripVertical, Filter } from "lucide-react"
 import { columns, type Priority, type Task, type ColumnId } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/context"
 import { TaskModal } from "@/components/task-modal"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Select, type SelectOption } from "@/components/ui/select"
 
 const priorityConfig: Record<Priority, { icon: typeof SignalHigh; className: string; label: string }> = {
   urgent: { icon: AlertTriangle, className: "text-destructive", label: "Urgente" },
@@ -15,6 +16,15 @@ const priorityConfig: Record<Priority, { icon: typeof SignalHigh; className: str
   low: { icon: SignalLow, className: "text-chart-2", label: "Baixa" },
   none: { icon: Minus, className: "text-muted-foreground", label: "Sem" },
 }
+
+const priorityFilterOptions: SelectOption<string>[] = [
+  { value: "all", label: "Todas as prioridades", icon: <Filter className="size-3.5 text-muted-foreground shrink-0" /> },
+  { value: "urgent", label: "Urgente", icon: <AlertTriangle className="size-3.5 text-destructive shrink-0" /> },
+  { value: "high", label: "Alta", icon: <SignalHigh className="size-3.5 text-chart-5 shrink-0" /> },
+  { value: "medium", label: "Média", icon: <SignalMedium className="size-3.5 text-chart-3 shrink-0" /> },
+  { value: "low", label: "Baixa", icon: <SignalLow className="size-3.5 text-chart-2 shrink-0" /> },
+  { value: "none", label: "Sem prioridade", icon: <Minus className="size-3.5 text-muted-foreground shrink-0" /> },
+]
 
 const avatarMap: Record<string, string> = {
   MA: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
@@ -27,6 +37,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
   const { userData, moveTask } = useApp()
   const { tasks } = userData
 
+  const [priorityFilter, setPriorityFilter] = useState<string>("all")
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [createColumn, setCreateColumn] = useState<ColumnId | null>(null)
   const [dragOverCol, setDragOverCol] = useState<ColumnId | null>(null)
@@ -80,16 +91,26 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
   return (
     <>
       <div className={cn("rounded-xl border border-border bg-card", fullWidth ? "flex-1" : "")}>
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
           <div>
             <h2 className="text-sm font-semibold text-card-foreground">Quadro Kanban</h2>
             <p className="text-xs text-muted-foreground">Todas as tarefas do projeto Octho Core</p>
+          </div>
+          <div className="w-52">
+            <Select
+              value={priorityFilter}
+              onChange={setPriorityFilter}
+              options={priorityFilterOptions}
+              triggerClassName="h-8 text-xs px-2.5 py-1"
+            />
           </div>
         </div>
 
         <div className="flex gap-4 overflow-x-auto p-4">
           {columns.map((col) => {
-            const colTasks = tasks.filter((t) => t.column === col.id)
+            const colTasks = tasks.filter(
+              (t) => t.column === col.id && (priorityFilter === "all" || t.priority === priorityFilter)
+            )
             const colHours = colTasks.reduce((acc, t) => acc + t.hoursLogged, 0)
             const isDragOver = dragOverCol === col.id
 
