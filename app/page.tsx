@@ -14,17 +14,11 @@ import { useApp } from "@/lib/context"
 import { Task } from "@/lib/data"
 import { KanbanSquare, Layers, Clock, BarChart3, Settings, Inbox, Construction } from "lucide-react"
 
-function PlaceholderView({ title, icon: Icon }: { title: string; icon: typeof Construction }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 text-muted-foreground">
-      <div className="flex size-16 items-center justify-center rounded-2xl bg-accent">
-        <Icon className="size-8 text-accent-foreground" />
-      </div>
-      <h2 className="text-xl font-semibold text-foreground">{title}</h2>
-      <p className="text-sm">Esta seção estará disponível em breve.</p>
-    </div>
-  )
-}
+import { TimeLogView } from "@/components/views/time-log-view"
+import { ReportsView } from "@/components/views/reports-view"
+import { ProjectsView } from "@/components/views/projects-view"
+import { InboxView } from "@/components/views/inbox-view"
+import { SettingsView } from "@/components/views/settings-view"
 
 function MyTasksView() {
   const { userData, currentUser } = useApp()
@@ -112,11 +106,11 @@ export default function Page() {
         )}
 
         {activeView === "my-tasks" && <MyTasksView />}
-        {activeView === "inbox" && <PlaceholderView title="Caixa de Entrada" icon={Inbox} />}
-        {activeView === "projects" && <PlaceholderView title="Projetos" icon={Layers} />}
-        {activeView === "time-log" && <PlaceholderView title="Registro de Horas" icon={Clock} />}
-        {activeView === "reports" && <PlaceholderView title="Relatórios" icon={BarChart3} />}
-        {activeView === "settings" && <PlaceholderView title="Configurações" icon={Settings} />}
+        {activeView === "inbox" && <InboxView />}
+        {activeView === "projects" && <ProjectsView />}
+        {activeView === "time-log" && <TimeLogView />}
+        {activeView === "reports" && <ReportsView />}
+        {activeView === "settings" && <SettingsView />}
       </main>
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onSelectTask={handleSelectTask} />
