@@ -29,23 +29,23 @@ export type UserProfile = {
 
 export const users: UserProfile[] = [
   {
-    id: "MA",
-    name: "Marina Alves",
-    email: "marina@octho.app",
-    avatar: "MA",
-    avatarColor: "#10b981",
-    role: "Product Owner",
-    imageUrl: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
-    verified: true,
-  },
-  {
     id: "FA",
     name: "Flavio Alves",
-    email: "flavio@octho.app",
+    email: "flavio.adsv@gmail.com",
     avatar: "FA",
     avatarColor: "#6366f1",
     role: "Tech Lead",
     imageUrl: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
+    verified: true,
+  },
+  {
+    id: "MA",
+    name: "Marina Alves",
+    email: "flavio.adsv@gmail.com",
+    avatar: "MA",
+    avatarColor: "#10b981",
+    role: "Product Owner",
+    imageUrl: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
     verified: true,
   },
   {

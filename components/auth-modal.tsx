@@ -27,8 +27,8 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
   // Form states
   const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [email, setEmail] = useState("flavio.adsv@gmail.com")
+  const [password, setPassword] = useState("12345")
   const [role, setRole] = useState("Desenvolvedor")
   const [selectedColor, setSelectedColor] = useState(avatarColors[0].hex)
 
@@ -311,6 +311,11 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         {/* TAB 2: LOGIN SUPABASE */}
         {tab === "login" && (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div className="rounded-lg border border-primary/20 bg-primary/10 p-2.5 text-xs text-primary font-medium flex items-center justify-between">
+              <span>Conta vinculada: <b>flavio.adsv@gmail.com</b></span>
+              <span className="text-[10px] bg-background px-1.5 py-0.5 rounded border border-border">Senha: 12345</span>
+            </div>
+
             <div className="space-y-1">
               <label className="text-xs font-medium text-foreground">Email</label>
               <div className="relative">
