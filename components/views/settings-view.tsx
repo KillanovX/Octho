@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { User, Bell, Sliders, Shield, Save, Check, Moon, Sun, Monitor } from "lucide-react"
+import { User, Bell, Sliders, Shield, Save, Check, Moon, Sun, Monitor, LogOut } from "lucide-react"
 import { useApp } from "@/lib/context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
@@ -11,7 +11,7 @@ const avatarMap: Record<string, string> = {
 }
 
 export function SettingsView() {
-  const { currentUser, setCurrentUser } = useApp()
+  const { currentUser, setCurrentUser, signOut } = useApp()
 
   const [saved, setSaved] = useState(false)
   const [name, setName] = useState(currentUser.name)
@@ -117,8 +117,17 @@ export function SettingsView() {
             </div>
           </div>
 
-          {/* Botão de Salvar */}
-          <div className="flex items-center justify-end gap-3">
+          {/* Botão de Salvar e Sair */}
+          <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/20 transition-colors"
+            >
+              <LogOut className="size-4" />
+              <span>Sair da conta</span>
+            </button>
+
             <button
               type="submit"
               className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"

@@ -425,7 +425,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleSignOut = useCallback(async () => {
     await signOutSupabase()
-    setCurrentUserVal(users[0])
+    setIsAuthModalOpen(true)
   }, [])
 
   // ── Mutations ──
