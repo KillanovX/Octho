@@ -16,9 +16,10 @@ import {
   VerifiedIcon,
   LogIn,
   LogOut,
+  UserPlus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useApp, users, type ViewId } from "@/lib/context"
+import { useApp, type ViewId } from "@/lib/context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 type NavDef = { name: string; icon: typeof Inbox; view: ViewId; badge?: string }
@@ -37,7 +38,7 @@ const workspace: NavDef[] = [
 ]
 
 export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
-  const { activeView, setActiveView, currentUser, setCurrentUser, unreadCount, openAuthModal, signOut } = useApp()
+  const { activeView, setActiveView, currentUser, setCurrentUser, profilesList, unreadCount, openAuthModal, signOut } = useApp()
   const [showSwitcher, setShowSwitcher] = useState(false)
 
   return (
@@ -101,10 +102,10 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
         {showSwitcher && (
           <div className="absolute bottom-12 left-0 right-0 z-50 mb-2 rounded-lg border border-border bg-card p-2 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-150">
             <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Alternar Usuário
+              Alternar Perfil
             </p>
-            <div className="flex flex-col gap-1">
-              {users.map((u) => (
+            <div className="flex flex-col gap-1 max-h-56 overflow-y-auto">
+              {profilesList.map((u) => (
                 <button
                   key={u.id}
                   onClick={() => {
@@ -126,7 +127,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
                   </div>
                   <div className="min-w-0 flex-1 text-left">
                     <p className="truncate font-medium text-foreground">{u.name}</p>
-                    <p className="truncate text-[10px] text-muted-foreground">{u.email}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{u.role || u.email}</p>
                   </div>
                 </button>
               ))}
@@ -140,8 +141,8 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
                 }}
                 className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-primary transition-colors hover:bg-sidebar-accent"
               >
-                <LogIn className="size-3.5" />
-                <span>Entrar no Supabase</span>
+                <UserPlus className="size-3.5" />
+                <span>+ Criar ou entrar perfil</span>
               </button>
 
               <button

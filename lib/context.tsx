@@ -22,6 +22,7 @@ export type UserProfile = {
   email: string
   avatar: string
   avatarColor: string
+  role?: string
   imageUrl?: string
   verified?: boolean
 }
@@ -33,6 +34,7 @@ export const users: UserProfile[] = [
     email: "marina@octho.app",
     avatar: "MA",
     avatarColor: "#10b981",
+    role: "Product Owner",
     imageUrl: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
     verified: true,
   },
@@ -42,8 +44,29 @@ export const users: UserProfile[] = [
     email: "flavio@octho.app",
     avatar: "FA",
     avatarColor: "#6366f1",
+    role: "Tech Lead",
     imageUrl: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
     verified: true,
+  },
+  {
+    id: "JS",
+    name: "João Silva",
+    email: "joao@octho.app",
+    avatar: "JS",
+    avatarColor: "#3b82f6",
+    role: "Frontend Engineer",
+    imageUrl: "https://images.shadcnspace.com/assets/profiles/user-2.jpg",
+    verified: false,
+  },
+  {
+    id: "RP",
+    name: "Rafaela Pires",
+    email: "rafaela@octho.app",
+    avatar: "RP",
+    avatarColor: "#f59e0b",
+    role: "UI/UX Designer",
+    imageUrl: "https://images.shadcnspace.com/assets/profiles/user-4.jpg",
+    verified: false,
   },
 ]
 
@@ -71,6 +94,8 @@ type AppContextType = {
   // User & Auth
   currentUser: UserProfile
   setCurrentUser: (user: UserProfile) => void
+  profilesList: UserProfile[]
+  addProfile: (profile: UserProfile) => void
   isAuthModalOpen: boolean
   openAuthModal: () => void
   closeAuthModal: () => void
@@ -277,8 +302,20 @@ async function loadEventsFromSupabase(profileId: string): Promise<(ActivityEvent
 // ─── Provider ───────────────────────────────────────────────
 export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUserVal] = useState<UserProfile>(users[0])
+  const [profilesList, setProfilesList] = useState<UserProfile[]>(users)
   const [activeView, setActiveView] = useState<ViewId>("dashboard")
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+
+  const addProfile = useCallback((newProfile: UserProfile) => {
+    setProfilesList((prev) => {
+      if (prev.some((p) => p.id === newProfile.id || p.email === newProfile.email)) return prev
+      return [...prev, newProfile]
+    })
+    setUsersStore((prev) => ({
+      ...prev,
+      [newProfile.id]: buildDefaultUserData(),
+    }))
+  }, [])
 
   const [usersStore, setUsersStore] = useState<Record<string, UserData>>({
     MA: buildMarinaData(),
@@ -546,6 +583,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       value={{
         currentUser,
         setCurrentUser: setCurrentUserVal,
+        profilesList,
+        addProfile,
         isAuthModalOpen,
         openAuthModal,
         closeAuthModal,

@@ -1,22 +1,37 @@
 "use client"
 
 import React, { useState } from "react"
-import { X, Lock, Mail, User, LogIn, UserPlus, Zap, AlertCircle, CheckCircle2 } from "lucide-react"
+import { X, Lock, Mail, User, LogIn, UserPlus, Zap, AlertCircle, CheckCircle2, Shield, Palette, Briefcase } from "lucide-react"
 import { signInWithSupabase, signUpWithSupabase, isSupabaseConfigured } from "@/lib/supabase"
-import { useApp } from "@/lib/context"
+import { useApp, type UserProfile } from "@/lib/context"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 interface AuthModalProps {
   open: boolean
   onClose: () => void
 }
 
-export function AuthModal({ open, onClose }: AuthModalProps) {
-  const { setCurrentUser } = useApp()
+const avatarColors = [
+  { name: "Indigo", hex: "#6366f1" },
+  { name: "Emerald", hex: "#10b981" },
+  { name: "Blue", hex: "#3b82f6" },
+  { name: "Amber", hex: "#f59e0b" },
+  { name: "Purple", hex: "#8b5cf6" },
+  { name: "Rose", hex: "#f43f5e" },
+]
 
-  const [mode, setMode] = useState<"login" | "register">("login")
+export function AuthModal({ open, onClose }: AuthModalProps) {
+  const { setCurrentUser, profilesList, addProfile } = useApp()
+
+  const [tab, setTab] = useState<"profiles" | "login" | "register">("profiles")
+
+  // Form states
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [role, setRole] = useState("Desenvolvedor")
+  const [selectedColor, setSelectedColor] = useState(avatarColors[0].hex)
+
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
@@ -25,66 +40,132 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
   if (!open) return null
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleQuickSelectProfile = (profile: UserProfile) => {
+    setCurrentUser(profile)
+    setSuccessMsg(`Perfil ${profile.name} ativado!`)
+    setTimeout(() => {
+      onClose()
+      setSuccessMsg(null)
+    }, 600)
+  }
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg(null)
     setSuccessMsg(null)
     setLoading(true)
 
     try {
-      if (mode === "login") {
-        const { data, error } = await signInWithSupabase(email, password)
-        if (error) {
-          setErrorMsg(error.message || "Email ou senha incorretos.")
-        } else if (data?.user) {
-          const user = data.user
-          const avatar = (user.user_metadata?.avatar || email.slice(0, 2)).toUpperCase()
-          setCurrentUser({
-            id: user.id,
-            name: user.user_metadata?.name || email.split("@")[0],
-            email: user.email || email,
-            avatar,
-            avatarColor: "#6366f1",
-            verified: true,
-          })
-          setSuccessMsg("Login realizado com sucesso!")
-          setTimeout(() => {
-            onClose()
-          }, 800)
-        }
-      } else {
-        if (!name.trim()) {
-          setErrorMsg("Por favor, preencha seu nome.")
-          setLoading(false)
-          return
-        }
-        const { data, error } = await signUpWithSupabase(email, password, name.trim())
-        if (error) {
-          setErrorMsg(error.message || "Erro ao cadastrar conta.")
-        } else if (data?.user) {
-          const user = data.user
-          const avatar = name
-            .split(" ")
-            .map((p) => p[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 2)
-          setCurrentUser({
-            id: user.id,
-            name: name.trim(),
+      if (!isConfigured) {
+        // Fallback local demo profile login
+        const existing = profilesList.find((p) => p.email.toLowerCase() === email.toLowerCase())
+        if (existing) {
+          setCurrentUser(existing)
+          setSuccessMsg(`Login efetuado como ${existing.name}!`)
+        } else {
+          const initials = email.slice(0, 2).toUpperCase()
+          const demoUser: UserProfile = {
+            id: email,
+            name: email.split("@")[0],
             email,
-            avatar,
-            avatarColor: "#6366f1",
+            avatar: initials,
+            avatarColor: selectedColor,
             verified: true,
-          })
-          setSuccessMsg("Conta criada com sucesso! Verifique seu email se necessário.")
-          setTimeout(() => {
-            onClose()
-          }, 1200)
+          }
+          addProfile(demoUser)
+          setCurrentUser(demoUser)
+          setSuccessMsg(`Login no modo demo realizado!`)
         }
+        setTimeout(() => onClose(), 800)
+        return
+      }
+
+      const { data, error } = await signInWithSupabase(email, password)
+      if (error) {
+        setErrorMsg(error.message || "Email ou senha incorretos.")
+      } else if (data?.user) {
+        const user = data.user
+        const avatar = (user.user_metadata?.avatar || email.slice(0, 2)).toUpperCase()
+        const userProfile: UserProfile = {
+          id: user.id,
+          name: user.user_metadata?.name || email.split("@")[0],
+          email: user.email || email,
+          avatar,
+          avatarColor: "#6366f1",
+          verified: true,
+        }
+        addProfile(userProfile)
+        setCurrentUser(userProfile)
+        setSuccessMsg("Login realizado com sucesso!")
+        setTimeout(() => onClose(), 800)
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Ocorreu um erro ao processar.")
+      setErrorMsg(err.message || "Ocorreu um erro ao realizar login.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErrorMsg(null)
+    setSuccessMsg(null)
+    setLoading(true)
+
+    if (!name.trim()) {
+      setErrorMsg("Por favor, informe seu nome completo.")
+      setLoading(false)
+      return
+    }
+
+    const initials = name
+      .trim()
+      .split(" ")
+      .map((p) => p[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+
+    try {
+      if (!isConfigured) {
+        // Fallback local demo registration
+        const newProfile: UserProfile = {
+          id: `usr_${Date.now()}`,
+          name: name.trim(),
+          email: email.trim() || `${initials.toLowerCase()}@octho.app`,
+          avatar: initials,
+          avatarColor: selectedColor,
+          role: role.trim() || "Membro do Time",
+          verified: true,
+        }
+        addProfile(newProfile)
+        setCurrentUser(newProfile)
+        setSuccessMsg("Perfil criado e ativado com sucesso!")
+        setTimeout(() => onClose(), 1000)
+        return
+      }
+
+      const { data, error } = await signUpWithSupabase(email, password, name.trim())
+      if (error) {
+        setErrorMsg(error.message || "Erro ao cadastrar conta no Supabase.")
+      } else if (data?.user) {
+        const user = data.user
+        const newProfile: UserProfile = {
+          id: user.id,
+          name: name.trim(),
+          email: email.trim(),
+          avatar: initials,
+          avatarColor: selectedColor,
+          role: role.trim() || "Membro do Time",
+          verified: true,
+        }
+        addProfile(newProfile)
+        setCurrentUser(newProfile)
+        setSuccessMsg("Conta e perfil criados com sucesso!")
+        setTimeout(() => onClose(), 1200)
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || "Erro ao processar cadastro.")
     } finally {
       setLoading(false)
     }
@@ -96,7 +177,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md mx-4 rounded-xl border border-border bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-lg mx-4 rounded-xl border border-border bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -108,62 +189,66 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           <X className="size-5" />
         </button>
 
-        {/* Header logo */}
-        <div className="flex items-center gap-2 mb-6">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
             <Zap className="size-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">Octho Dashboard</h2>
+            <h2 className="text-lg font-bold text-foreground">Autenticação de Perfis</h2>
             <p className="text-xs text-muted-foreground">
-              {mode === "login" ? "Entre com sua conta Supabase" : "Crie sua nova conta no Supabase"}
+              Selecione um perfil de acesso ou cadastre um novo membro
             </p>
           </div>
         </div>
 
-        {/* Demo Mode Notice if not configured */}
-        {!isConfigured && (
-          <div className="mb-5 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-500">
-            <p className="font-medium mb-1">Chaves do Supabase pendentes no .env.local</p>
-            <p className="text-[11px] opacity-90">
-              Você pode continuar utilizando o aplicativo no modo demo local.
-            </p>
-          </div>
-        )}
-
-        {/* Mode Switcher Tabs */}
-        <div className="flex rounded-lg bg-muted p-1 mb-5">
+        {/* Navigation Tabs */}
+        <div className="flex rounded-lg bg-muted p-1 mb-6">
           <button
             type="button"
             onClick={() => {
-              setMode("login")
+              setTab("profiles")
               setErrorMsg(null)
             }}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-              mode === "login"
+              tab === "profiles"
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Entrar
+            Escolher Perfil
           </button>
           <button
             type="button"
             onClick={() => {
-              setMode("register")
+              setTab("login")
               setErrorMsg(null)
             }}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-              mode === "register"
+              tab === "login"
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Criar Conta
+            Login Supabase
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTab("register")
+              setErrorMsg(null)
+            }}
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+              tab === "register"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Criar Perfil
           </button>
         </div>
 
-        {/* Error / Success Feedback */}
+        {/* Feedback Messages */}
         {errorMsg && (
           <div className="mb-4 flex items-center gap-2 rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive">
             <AlertCircle className="size-4 shrink-0" />
@@ -177,76 +262,193 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === "register" && (
+        {/* TAB 1: PERFIS RÁPIDOS */}
+        {tab === "profiles" && (
+          <div className="space-y-4">
+            <p className="text-xs font-medium text-muted-foreground mb-2">
+              Selecione o perfil de membro da equipe para entrar:
+            </p>
+            <div className="grid grid-cols-1 gap-2.5 max-h-64 overflow-y-auto pr-1">
+              {profilesList.map((profile) => (
+                <button
+                  key={profile.id}
+                  type="button"
+                  onClick={() => handleQuickSelectProfile(profile)}
+                  className="group flex items-center justify-between rounded-xl border border-border bg-background p-3 text-left transition-all hover:border-primary/50 hover:bg-accent/40 shadow-sm"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="size-10 shrink-0 border border-border">
+                      {profile.imageUrl && <AvatarImage src={profile.imageUrl} alt={profile.name} />}
+                      <AvatarFallback style={{ backgroundColor: profile.avatarColor, color: "#fff" }} className="text-xs font-bold">
+                        {profile.avatar}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                        {profile.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{profile.role || profile.email}</p>
+                    </div>
+                  </div>
+                  <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                    Entrar →
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setTab("register")}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border p-3 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors mt-2"
+            >
+              <UserPlus className="size-4" />
+              <span>+ Cadastrar novo membro no time</span>
+            </button>
+          </div>
+        )}
+
+        {/* TAB 2: LOGIN SUPABASE */}
+        {tab === "login" && (
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">Nome Completo</label>
+              <label className="text-xs font-medium text-foreground">Email</label>
               <div className="relative">
-                <User className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                <Mail className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
                 <input
-                  type="text"
+                  type="email"
                   required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Seu nome"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="marina@octho.app"
                   className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
             </div>
-          )}
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu.email@octho.app"
-                className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
-              />
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Senha</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">Senha</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
-              />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 mt-2"
+            >
+              <LogIn className="size-4" />
+              <span>{loading ? "Entrando..." : "Entrar com Email"}</span>
+            </button>
+          </form>
+        )}
+
+        {/* TAB 3: CRIAR NOVO PERFIL */}
+        {tab === "register" && (
+          <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Nome Completo</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ex: Carlos Eduardo"
+                    className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Cargo / Função</label>
+                <div className="relative">
+                  <Briefcase className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    placeholder="Ex: Product Designer"
+                    className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 mt-2"
-          >
-            {mode === "login" ? <LogIn className="size-4" /> : <UserPlus className="size-4" />}
-            <span>{loading ? "Aguarde..." : mode === "login" ? "Entrar na Conta" : "Criar Conta"}</span>
-          </button>
-        </form>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Email Profissional</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="carlos@octho.app"
+                  className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
 
-        {/* Footer fallback */}
-        <div className="mt-5 border-t border-border pt-4 text-center">
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline"
-          >
-            Continuar no modo demonstração
-          </button>
-        </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Senha de Acesso</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                <input
+                  type="password"
+                  required={isConfigured}
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
+
+            {/* Avatar Color Selector */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <Palette className="size-3.5 text-muted-foreground" />
+                <span>Cor do Avatar do Perfil</span>
+              </label>
+              <div className="flex items-center gap-2.5">
+                {avatarColors.map((c) => (
+                  <button
+                    key={c.hex}
+                    type="button"
+                    onClick={() => setSelectedColor(c.hex)}
+                    className={`size-7 rounded-full transition-transform ${
+                      selectedColor === c.hex ? "ring-2 ring-primary ring-offset-2 scale-110" : "hover:scale-105 opacity-80"
+                    }`}
+                    style={{ backgroundColor: c.hex }}
+                    title={c.name}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 mt-3"
+            >
+              <UserPlus className="size-4" />
+              <span>{loading ? "Cadastrando..." : "Criar e Ativar Perfil"}</span>
+            </button>
+          </form>
+        )}
       </div>
     </div>
   )
