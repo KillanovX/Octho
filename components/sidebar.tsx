@@ -14,6 +14,8 @@ import {
   ChevronDown,
   Zap,
   VerifiedIcon,
+  LogIn,
+  LogOut,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp, users, type ViewId } from "@/lib/context"
@@ -35,7 +37,7 @@ const workspace: NavDef[] = [
 ]
 
 export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
-  const { activeView, setActiveView, currentUser, setCurrentUser, unreadCount } = useApp()
+  const { activeView, setActiveView, currentUser, setCurrentUser, unreadCount, openAuthModal, signOut } = useApp()
   const [showSwitcher, setShowSwitcher] = useState(false)
 
   return (
@@ -121,11 +123,6 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
                         {u.avatar}
                       </AvatarFallback>
                     </Avatar>
-                    {u.verified && (
-                      <span className="absolute -right-0.5 -bottom-0.5 flex size-2 items-center justify-center rounded-full bg-sidebar">
-                        <VerifiedIcon className="size-full fill-blue-500 text-white" />
-                      </span>
-                    )}
                   </div>
                   <div className="min-w-0 flex-1 text-left">
                     <p className="truncate font-medium text-foreground">{u.name}</p>
@@ -133,6 +130,30 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
                   </div>
                 </button>
               ))}
+
+              <div className="my-1 border-t border-border" />
+
+              <button
+                onClick={() => {
+                  openAuthModal()
+                  setShowSwitcher(false)
+                }}
+                className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-primary transition-colors hover:bg-sidebar-accent"
+              >
+                <LogIn className="size-3.5" />
+                <span>Entrar no Supabase</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  signOut()
+                  setShowSwitcher(false)
+                }}
+                className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-destructive transition-colors hover:bg-sidebar-accent"
+              >
+                <LogOut className="size-3.5" />
+                <span>Sair da conta</span>
+              </button>
             </div>
           </div>
         )}

@@ -10,6 +10,7 @@ import { KanbanBoard } from "@/components/kanban-board"
 import { ActivityFeed } from "@/components/activity-feed"
 import { SearchModal } from "@/components/search-modal"
 import { TaskModal } from "@/components/task-modal"
+import { AuthModal } from "@/components/auth-modal"
 import { useApp } from "@/lib/context"
 import { Task } from "@/lib/data"
 import { KanbanSquare, Layers, Clock, BarChart3, Settings, Inbox, Construction } from "lucide-react"
@@ -63,7 +64,7 @@ function MyTasksView() {
 }
 
 export default function Page() {
-  const { activeView } = useApp()
+  const { activeView, isAuthModalOpen, closeAuthModal } = useApp()
   const [searchOpen, setSearchOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
 
@@ -115,6 +116,7 @@ export default function Page() {
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onSelectTask={handleSelectTask} />
       <TaskModal open={!!editTask} onClose={() => setEditTask(null)} task={editTask} />
+      <AuthModal open={isAuthModalOpen} onClose={closeAuthModal} />
     </div>
   )
 }

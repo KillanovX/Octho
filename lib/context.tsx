@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react"
 import {
   Task,
   ActivityEvent,
@@ -13,7 +13,7 @@ import {
   type Priority,
   columns,
 } from "./data"
-import { supabase, isSupabaseConfigured } from "./supabase"
+import { supabase, isSupabaseConfigured, signOutSupabase, getUserProfile } from "./supabase"
 
 // ─── User Profiles ──────────────────────────────────────────
 export type UserProfile = {
@@ -68,9 +68,14 @@ export type TimerState = {
 
 // ─── Context Type ───────────────────────────────────────────
 type AppContextType = {
-  // User
+  // User & Auth
   currentUser: UserProfile
   setCurrentUser: (user: UserProfile) => void
+  isAuthModalOpen: boolean
+  openAuthModal: () => void
+  closeAuthModal: () => void
+  signOut: () => Promise<void>
+  isSupabaseActive: boolean
   // View
   activeView: ViewId
   setActiveView: (view: ViewId) => void
@@ -135,26 +140,29 @@ function buildMarinaData(): UserData {
   }
 }
 
-function buildFlavioData(): UserData {
+function buildDefaultUserData(): UserData {
   return {
-    tasks: [],
+    tasks: sampleTasks,
     weeklyHours: [
-      { day: "Seg", hours: 0, goal: 8 },
-      { day: "Ter", hours: 0, goal: 8 },
-      { day: "Qua", hours: 0, goal: 8 },
-      { day: "Qui", hours: 0, goal: 8 },
-      { day: "Sex", hours: 0, goal: 8 },
-      { day: "Sáb", hours: 0, goal: 4 },
+      { day: "Seg", hours: 6.5, goal: 8 },
+      { day: "Ter", hours: 7.2, goal: 8 },
+      { day: "Qua", hours: 8.1, goal: 8 },
+      { day: "Qui", hours: 5.4, goal: 8 },
+      { day: "Sex", hours: 6.8, goal: 8 },
+      { day: "Sáb", hours: 2.1, goal: 4 },
       { day: "Dom", hours: 0, goal: 0 },
     ],
     activityBreakdown: [
-      { name: "Frontend", hours: 0, color: "var(--chart-1)" },
-      { name: "Design", hours: 0, color: "var(--chart-2)" },
-      { name: "Backend", hours: 0, color: "var(--chart-4)" },
-      { name: "Conteúdo", hours: 0, color: "var(--chart-3)" },
-      { name: "Reuniões", hours: 0, color: "var(--chart-5)" },
+      { name: "Frontend", hours: 42, color: "var(--chart-1)" },
+      { name: "Design", hours: 28, color: "var(--chart-2)" },
+      { name: "Backend", hours: 34, color: "var(--chart-4)" },
+      { name: "Conteúdo", hours: 19, color: "var(--chart-3)" },
+      { name: "Reuniões", hours: 15, color: "var(--chart-5)" },
     ],
-    activityFeed: [],
+    activityFeed: sampleActivityFeed.map((e, i) => ({
+      ...e,
+      createdAt: Date.now() - (i + 1) * 15 * 60 * 1000,
+    })),
   }
 }
 
@@ -165,10 +173,14 @@ async function loadTasksFromSupabase(profileId: string): Promise<Task[] | null> 
     const { data, error } = await supabase
       .from("tasks")
       .select("*")
-      .eq("profile_id", profileId)
+      .or(`user_id.eq.${profileId},profile_id.eq.${profileId}`)
       .order("created_at", { ascending: true })
-    if (error) { console.error("Supabase load tasks error:", error); return null }
-    return (data ?? []).map((row: Record<string, unknown>) => ({
+    if (error) {
+      console.error("Supabase load tasks error:", error)
+      return null
+    }
+    if (!data || data.length === 0) return null
+    return data.map((row: Record<string, unknown>) => ({
       id: row.id as string,
       code: row.code as string,
       title: row.title as string,
@@ -177,10 +189,12 @@ async function loadTasksFromSupabase(profileId: string): Promise<Task[] | null> 
       labels: (row.labels ?? []) as Label[],
       assignee: row.assignee as string,
       assigneeColor: row.assignee_color as string,
-      hoursLogged: row.hours_logged as number,
-      estimate: row.estimate as number,
+      hoursLogged: Number(row.hours_logged ?? 0),
+      estimate: Number(row.estimate ?? 0),
     }))
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 async function saveTaskToSupabase(profileId: string, task: Task) {
@@ -189,6 +203,7 @@ async function saveTaskToSupabase(profileId: string, task: Task) {
     await supabase.from("tasks").upsert({
       id: task.id,
       profile_id: profileId,
+      user_id: profileId.length > 5 ? profileId : null,
       code: task.code,
       title: task.title,
       column: task.column,
@@ -199,13 +214,18 @@ async function saveTaskToSupabase(profileId: string, task: Task) {
       hours_logged: task.hoursLogged,
       estimate: task.estimate,
     })
-  } catch (e) { console.error("Supabase save task error:", e) }
+  } catch (e) {
+    console.error("Supabase save task error:", e)
+  }
 }
 
 async function deleteTaskFromSupabase(taskId: string) {
   if (!isSupabaseConfigured() || !supabase) return
-  try { await supabase.from("tasks").delete().eq("id", taskId) }
-  catch (e) { console.error("Supabase delete task error:", e) }
+  try {
+    await supabase.from("tasks").delete().eq("id", taskId)
+  } catch (e) {
+    console.error("Supabase delete task error:", e)
+  }
 }
 
 async function saveActivityToSupabase(profileId: string, event: ActivityEvent & { createdAt: number }) {
@@ -214,13 +234,16 @@ async function saveActivityToSupabase(profileId: string, event: ActivityEvent & 
     await supabase.from("activity_events").insert({
       id: event.id,
       profile_id: profileId,
+      user_id: profileId.length > 5 ? profileId : null,
       user_initials: event.user,
       user_color: event.userColor,
       action: event.action,
       target: event.target,
       created_at: new Date(event.createdAt).toISOString(),
     })
-  } catch (e) { console.error("Supabase save event error:", e) }
+  } catch (e) {
+    console.error("Supabase save event error:", e)
+  }
 }
 
 async function loadEventsFromSupabase(profileId: string): Promise<(ActivityEvent & { createdAt: number })[] | null> {
@@ -229,11 +252,15 @@ async function loadEventsFromSupabase(profileId: string): Promise<(ActivityEvent
     const { data, error } = await supabase
       .from("activity_events")
       .select("*")
-      .eq("profile_id", profileId)
+      .or(`user_id.eq.${profileId},profile_id.eq.${profileId}`)
       .order("created_at", { ascending: false })
       .limit(50)
-    if (error) { console.error("Supabase load events error:", error); return null }
-    return (data ?? []).map((row: Record<string, unknown>) => ({
+    if (error) {
+      console.error("Supabase load events error:", error)
+      return null
+    }
+    if (!data || data.length === 0) return null
+    return data.map((row: Record<string, unknown>) => ({
       id: row.id as string,
       user: row.user_initials as string,
       userColor: row.user_color as string,
@@ -242,17 +269,20 @@ async function loadEventsFromSupabase(profileId: string): Promise<(ActivityEvent
       time: "",
       createdAt: new Date(row.created_at as string).getTime(),
     }))
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 // ─── Provider ───────────────────────────────────────────────
 export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUserVal] = useState<UserProfile>(users[0])
   const [activeView, setActiveView] = useState<ViewId>("dashboard")
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
 
   const [usersStore, setUsersStore] = useState<Record<string, UserData>>({
     MA: buildMarinaData(),
-    FA: buildFlavioData(),
+    FA: buildDefaultUserData(),
   })
 
   const [timer, setTimer] = useState<TimerState>({
@@ -269,6 +299,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [supabaseLoaded, setSupabaseLoaded] = useState<Record<string, boolean>>({})
 
+  // ── Listen to Supabase Auth State ──
+  useEffect(() => {
+    if (!supabase) return
+
+    // Get current active session on boot
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const u = session.user
+        const profile = await getUserProfile(u.id)
+        const name = profile?.name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário"
+        const avatar = (profile?.avatar || u.user_metadata?.avatar || name.slice(0, 2)).toUpperCase()
+        setCurrentUserVal({
+          id: u.id,
+          name,
+          email: u.email || "",
+          avatar,
+          avatarColor: profile?.avatar_color || "#6366f1",
+          verified: true,
+        })
+      }
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const u = session.user
+        const profile = await getUserProfile(u.id)
+        const name = profile?.name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário"
+        const avatar = (profile?.avatar || u.user_metadata?.avatar || name.slice(0, 2)).toUpperCase()
+        setCurrentUserVal({
+          id: u.id,
+          name,
+          email: u.email || "",
+          avatar,
+          avatarColor: profile?.avatar_color || "#6366f1",
+          verified: true,
+        })
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
   // ── Load from Supabase on user switch ──
   useEffect(() => {
     const pid = currentUser.id
@@ -277,16 +351,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const tasks = await loadTasksFromSupabase(pid)
       const events = await loadEventsFromSupabase(pid)
       if (tasks !== null || events !== null) {
-        setUsersStore(prev => ({
+        setUsersStore((prev) => ({
           ...prev,
           [pid]: {
-            ...prev[pid],
+            ...prev[pid] || buildDefaultUserData(),
             ...(tasks !== null ? { tasks } : {}),
             ...(events !== null ? { activityFeed: events } : {}),
           },
         }))
       }
-      setSupabaseLoaded(prev => ({ ...prev, [pid]: true }))
+      setSupabaseLoaded((prev) => ({ ...prev, [pid]: true }))
     }
     load()
   }, [currentUser.id, supabaseLoaded])
@@ -294,115 +368,140 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Timer tick ──
   useEffect(() => {
     if (!timer.running) return
-    const interval = setInterval(() => setTimer(t => ({ ...t, seconds: t.seconds + 1 })), 1000)
+    const interval = setInterval(() => setTimer((t) => ({ ...t, seconds: t.seconds + 1 })), 1000)
     return () => clearInterval(interval)
   }, [timer.running])
 
   // ── Derived state ──
-  const userData = usersStore[currentUser.id]
+  const userData = usersStore[currentUser.id] || buildDefaultUserData()
 
   const hoursMonth = userData.tasks.reduce((acc, t) => acc + t.hoursLogged, 0)
-  const completedTasksMonth = userData.tasks.filter(t => t.column === "done").length
+  const completedTasksMonth = userData.tasks.filter((t) => t.column === "done").length
 
   const unreadCount = userData.activityFeed.filter(
-    e => e.createdAt > (lastReadTimestamp[currentUser.id] ?? 0)
+    (e) => e.createdAt > (lastReadTimestamp[currentUser.id] ?? 0)
   ).length
 
+  // ── Auth Actions ──
+  const openAuthModal = useCallback(() => setIsAuthModalOpen(true), [])
+  const closeAuthModal = useCallback(() => setIsAuthModalOpen(false), [])
+
+  const handleSignOut = useCallback(async () => {
+    await signOutSupabase()
+    setCurrentUserVal(users[0])
+  }, [])
+
   // ── Mutations ──
-  const mutateData = useCallback((updater: (prev: UserData) => UserData) => {
-    setUsersStore(prev => ({
-      ...prev,
-      [currentUser.id]: updater(prev[currentUser.id]),
-    }))
-  }, [currentUser.id])
-
-  const logActivity = useCallback((action: string, target: string) => {
-    const event: ActivityEvent & { createdAt: number } = {
-      id: crypto.randomUUID(),
-      user: currentUser.avatar,
-      userColor: currentUser.avatarColor,
-      action,
-      target,
-      time: "agora mesmo",
-      createdAt: Date.now(),
-    }
-    mutateData(prev => ({
-      ...prev,
-      activityFeed: [event, ...prev.activityFeed].slice(0, 50),
-    }))
-    saveActivityToSupabase(currentUser.id, event)
-  }, [currentUser, mutateData])
-
-  const addTask = useCallback((taskData: Omit<Task, "id" | "code">) => {
-    const task: Task = { ...taskData, id: crypto.randomUUID(), code: nextCode() }
-    mutateData(prev => ({ ...prev, tasks: [...prev.tasks, task] }))
-    logActivity("criou", `${task.code} — ${task.title}`)
-    saveTaskToSupabase(currentUser.id, task)
-  }, [currentUser.id, mutateData, logActivity])
-
-  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    let updatedTask: Task | null = null
-    mutateData(prev => ({
-      ...prev,
-      tasks: prev.tasks.map(t => {
-        if (t.id !== id) return t
-        updatedTask = { ...t, ...updates }
-        return updatedTask
-      }),
-    }))
-    const task = userData.tasks.find(t => t.id === id)
-    if (task) {
-      logActivity("editou", `${task.code} — ${task.title}`)
-      saveTaskToSupabase(currentUser.id, { ...task, ...updates })
-    }
-  }, [currentUser.id, mutateData, logActivity, userData.tasks])
-
-  const deleteTask = useCallback((id: string) => {
-    const task = userData.tasks.find(t => t.id === id)
-    mutateData(prev => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }))
-    if (task) {
-      logActivity("excluiu", `${task.code} — ${task.title}`)
-      deleteTaskFromSupabase(id)
-    }
-  }, [mutateData, logActivity, userData.tasks])
-
-  const moveTask = useCallback((id: string, column: ColumnId, overTaskId?: string) => {
-    const task = userData.tasks.find(t => t.id === id)
-    if (!task) return
-    const colName = columns.find(c => c.id === column)?.name ?? column
-
-    mutateData(prev => {
-      const activeTask = prev.tasks.find(t => t.id === id)
-      if (!activeTask) return prev
-
-      const cleanTasks = prev.tasks.filter(t => t.id !== id)
-
-      let insertIndex = cleanTasks.length
-      if (overTaskId) {
-        const idx = cleanTasks.findIndex(t => t.id === overTaskId)
-        if (idx !== -1) {
-          insertIndex = idx
-        }
-      }
-
-      const updatedTask = { ...activeTask, column }
-      const newTasks = [...cleanTasks]
-      newTasks.splice(insertIndex, 0, updatedTask)
-
-      saveTaskToSupabase(currentUser.id, updatedTask)
-
-      return {
+  const mutateData = useCallback(
+    (updater: (prev: UserData) => UserData) => {
+      setUsersStore((prev) => ({
         ...prev,
-        tasks: newTasks,
-      }
-    })
+        [currentUser.id]: updater(prev[currentUser.id] || buildDefaultUserData()),
+      }))
+    },
+    [currentUser.id]
+  )
 
-    if (task.column !== column) {
-      logActivity(`moveu para ${colName}`, `${task.code} — ${task.title}`)
-    } else {
-      logActivity(`reordenou`, `${task.code} — ${task.title}`)
-    }
-  }, [currentUser.id, mutateData, logActivity, userData.tasks])
+  const logActivity = useCallback(
+    (action: string, target: string) => {
+      const event: ActivityEvent & { createdAt: number } = {
+        id: crypto.randomUUID(),
+        user: currentUser.avatar,
+        userColor: currentUser.avatarColor,
+        action,
+        target,
+        time: "agora mesmo",
+        createdAt: Date.now(),
+      }
+      mutateData((prev) => ({
+        ...prev,
+        activityFeed: [event, ...prev.activityFeed].slice(0, 50),
+      }))
+      saveActivityToSupabase(currentUser.id, event)
+    },
+    [currentUser, mutateData]
+  )
+
+  const addTask = useCallback(
+    (taskData: Omit<Task, "id" | "code">) => {
+      const task: Task = { ...taskData, id: crypto.randomUUID(), code: nextCode() }
+      mutateData((prev) => ({ ...prev, tasks: [...prev.tasks, task] }))
+      logActivity("criou", `${task.code} — ${task.title}`)
+      saveTaskToSupabase(currentUser.id, task)
+    },
+    [currentUser.id, mutateData, logActivity]
+  )
+
+  const updateTask = useCallback(
+    (id: string, updates: Partial<Task>) => {
+      mutateData((prev) => ({
+        ...prev,
+        tasks: prev.tasks.map((t) => {
+          if (t.id !== id) return t
+          return { ...t, ...updates }
+        }),
+      }))
+      const task = userData.tasks.find((t) => t.id === id)
+      if (task) {
+        logActivity("editou", `${task.code} — ${task.title}`)
+        saveTaskToSupabase(currentUser.id, { ...task, ...updates })
+      }
+    },
+    [currentUser.id, mutateData, logActivity, userData.tasks]
+  )
+
+  const deleteTask = useCallback(
+    (id: string) => {
+      const task = userData.tasks.find((t) => t.id === id)
+      mutateData((prev) => ({ ...prev, tasks: prev.tasks.filter((t) => t.id !== id) }))
+      if (task) {
+        logActivity("excluiu", `${task.code} — ${task.title}`)
+        deleteTaskFromSupabase(id)
+      }
+    },
+    [mutateData, logActivity, userData.tasks]
+  )
+
+  const moveTask = useCallback(
+    (id: string, column: ColumnId, overTaskId?: string) => {
+      const task = userData.tasks.find((t) => t.id === id)
+      if (!task) return
+      const colName = columns.find((c) => c.id === column)?.name ?? column
+
+      mutateData((prev) => {
+        const activeTask = prev.tasks.find((t) => t.id === id)
+        if (!activeTask) return prev
+
+        const cleanTasks = prev.tasks.filter((t) => t.id !== id)
+
+        let insertIndex = cleanTasks.length
+        if (overTaskId) {
+          const idx = cleanTasks.findIndex((t) => t.id === overTaskId)
+          if (idx !== -1) {
+            insertIndex = idx
+          }
+        }
+
+        const updatedTask = { ...activeTask, column }
+        const newTasks = [...cleanTasks]
+        newTasks.splice(insertIndex, 0, updatedTask)
+
+        saveTaskToSupabase(currentUser.id, updatedTask)
+
+        return {
+          ...prev,
+          tasks: newTasks,
+        }
+      })
+
+      if (task.column !== column) {
+        logActivity(`moveu para ${colName}`, `${task.code} — ${task.title}`)
+      } else {
+        logActivity(`reordenou`, `${task.code} — ${task.title}`)
+      }
+    },
+    [currentUser.id, mutateData, logActivity, userData.tasks]
+  )
 
   // ── Timer ──
   const startTimer = useCallback((taskId: string, taskCode: string) => {
@@ -410,7 +509,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const pauseTimer = useCallback(() => {
-    setTimer(t => ({ ...t, running: false }))
+    setTimer((t) => ({ ...t, running: false }))
   }, [])
 
   const resetTimer = useCallback(() => {
@@ -418,18 +517,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setTimerRunning = useCallback((running: boolean) => {
-    setTimer(t => ({ ...t, running }))
+    setTimer((t) => ({ ...t, running }))
   }, [])
 
   const logTimerHours = useCallback(() => {
     if (!timer.taskId || timer.seconds < 60) return
     const hours = Math.round((timer.seconds / 3600) * 100) / 100
-    const task = userData.tasks.find(t => t.id === timer.taskId)
+    const task = userData.tasks.find((t) => t.id === timer.taskId)
     if (task) {
       const updated = { ...task, hoursLogged: task.hoursLogged + hours }
-      mutateData(prev => ({
+      mutateData((prev) => ({
         ...prev,
-        tasks: prev.tasks.map(t => t.id === timer.taskId ? updated : t),
+        tasks: prev.tasks.map((t) => (t.id === timer.taskId ? updated : t)),
       }))
       logActivity(`registrou ${hours.toFixed(1)}h em`, `${task.code} — ${task.title}`)
       saveTaskToSupabase(currentUser.id, updated)
@@ -439,7 +538,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ── Notifications ──
   const markAllRead = useCallback(() => {
-    setLastReadTimestamp(prev => ({ ...prev, [currentUser.id]: Date.now() }))
+    setLastReadTimestamp((prev) => ({ ...prev, [currentUser.id]: Date.now() }))
   }, [currentUser.id])
 
   return (
@@ -447,6 +546,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       value={{
         currentUser,
         setCurrentUser: setCurrentUserVal,
+        isAuthModalOpen,
+        openAuthModal,
+        closeAuthModal,
+        signOut: handleSignOut,
+        isSupabaseActive: isSupabaseConfigured(),
         activeView,
         setActiveView,
         userData,
