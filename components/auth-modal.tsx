@@ -36,12 +36,13 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         const { data, error } = await signInWithSupabase(email, password)
         if (error) {
           setErrorMsg(error.message || "Email ou senha incorretos.")
-        } else if (data.user) {
-          const avatar = (data.user.user_metadata?.avatar || email.slice(0, 2)).toUpperCase()
+        } else if (data?.user) {
+          const user = data.user
+          const avatar = (user.user_metadata?.avatar || email.slice(0, 2)).toUpperCase()
           setCurrentUser({
-            id: data.user.id,
-            name: data.user.user_metadata?.name || email.split("@")[0],
-            email: data.user.email || email,
+            id: user.id,
+            name: user.user_metadata?.name || email.split("@")[0],
+            email: user.email || email,
             avatar,
             avatarColor: "#6366f1",
             verified: true,
@@ -60,7 +61,8 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         const { data, error } = await signUpWithSupabase(email, password, name.trim())
         if (error) {
           setErrorMsg(error.message || "Erro ao cadastrar conta.")
-        } else if (data.user) {
+        } else if (data?.user) {
+          const user = data.user
           const avatar = name
             .split(" ")
             .map((p) => p[0])
@@ -68,7 +70,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
             .toUpperCase()
             .slice(0, 2)
           setCurrentUser({
-            id: data.user.id,
+            id: user.id,
             name: name.trim(),
             email,
             avatar,
