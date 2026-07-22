@@ -155,39 +155,35 @@ export function getGreeting(): string {
 // ─── Initial Data ───────────────────────────────────────────
 function buildMarinaData(): UserData {
   return {
-    tasks: sampleTasks,
-    weeklyHours: sampleWeeklyHours,
-    activityBreakdown: sampleActivityBreakdown,
-    activityFeed: sampleActivityFeed.map((e, i) => ({
-      ...e,
-      createdAt: Date.now() - (i + 1) * 15 * 60 * 1000,
-    })),
+    tasks: [],
+    weeklyHours: [
+      { day: "Seg", hours: 0, goal: 8 },
+      { day: "Ter", hours: 0, goal: 8 },
+      { day: "Qua", hours: 0, goal: 8 },
+      { day: "Qui", hours: 0, goal: 8 },
+      { day: "Sex", hours: 0, goal: 8 },
+      { day: "Sáb", hours: 0, goal: 4 },
+      { day: "Dom", hours: 0, goal: 0 },
+    ],
+    activityBreakdown: [],
+    activityFeed: [],
   }
 }
 
 function buildDefaultUserData(): UserData {
   return {
-    tasks: sampleTasks,
+    tasks: [],
     weeklyHours: [
-      { day: "Seg", hours: 6.5, goal: 8 },
-      { day: "Ter", hours: 7.2, goal: 8 },
-      { day: "Qua", hours: 8.1, goal: 8 },
-      { day: "Qui", hours: 5.4, goal: 8 },
-      { day: "Sex", hours: 6.8, goal: 8 },
-      { day: "Sáb", hours: 2.1, goal: 4 },
+      { day: "Seg", hours: 0, goal: 8 },
+      { day: "Ter", hours: 0, goal: 8 },
+      { day: "Qua", hours: 0, goal: 8 },
+      { day: "Qui", hours: 0, goal: 8 },
+      { day: "Sex", hours: 0, goal: 8 },
+      { day: "Sáb", hours: 0, goal: 4 },
       { day: "Dom", hours: 0, goal: 0 },
     ],
-    activityBreakdown: [
-      { name: "Frontend", hours: 42, color: "var(--chart-1)" },
-      { name: "Design", hours: 28, color: "var(--chart-2)" },
-      { name: "Backend", hours: 34, color: "var(--chart-4)" },
-      { name: "Conteúdo", hours: 19, color: "var(--chart-3)" },
-      { name: "Reuniões", hours: 15, color: "var(--chart-5)" },
-    ],
-    activityFeed: sampleActivityFeed.map((e, i) => ({
-      ...e,
-      createdAt: Date.now() - (i + 1) * 15 * 60 * 1000,
-    })),
+    activityBreakdown: [],
+    activityFeed: [],
   }
 }
 
@@ -410,7 +406,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [timer.running])
 
   // ── Derived state ──
-  const userData = usersStore[currentUser.id] || buildDefaultUserData()
+  const rawUserData = usersStore[currentUser.id] || buildDefaultUserData()
+
+  // Um perfil específico deve ver apenas suas próprias atividades e tarefas no Kanban
+  const filteredTasks = rawUserData.tasks.filter((t) => t.assignee === currentUser.avatar)
+  const filteredActivityFeed = rawUserData.activityFeed.filter((e) => e.user === currentUser.avatar)
+
+  const userData = {
+    ...rawUserData,
+    tasks: filteredTasks,
+    activityFeed: filteredActivityFeed,
+  }
 
   const hoursMonth = userData.tasks.reduce((acc, t) => acc + t.hoursLogged, 0)
   const completedTasksMonth = userData.tasks.filter((t) => t.column === "done").length
