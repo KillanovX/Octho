@@ -147,11 +147,8 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
   }
 
   return (
-    <div className="relative w-full max-w-sm">
-      {/* Ambient glowing backdrop ring */}
-      <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-primary/30 via-indigo-500/20 to-cyan-500/30 opacity-75 blur-xl pointer-events-none" />
-
-      <Card className="relative w-full rounded-2xl border border-white/15 bg-card/95 backdrop-blur-md shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95),0_0_40px_-5px_rgba(99,102,241,0.25)] transition-all">
+    <div className="w-full max-w-sm">
+      <Card className="w-full rounded-2xl border border-border bg-card">
       <CardContent className="p-6 flex flex-col gap-6">
         {/* Brand Header (Centered Gradient Symbol) */}
         <div className="flex items-center justify-center py-1">
