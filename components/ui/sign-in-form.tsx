@@ -257,7 +257,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
 
           {/* Submit */}
           <Button type="submit" disabled={loading} variant="default" className="w-full h-12 text-base font-medium rounded-lg">
-            {loading ? "Aguarde..." : isSignUp ? "Criar Conta" : "Sign In"}
+            {loading ? "Aguarde..." : isSignUp ? "Criar Conta" : "Entrar"}
           </Button>
         </form>
 
@@ -315,7 +315,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
             }}
             className="text-primary cursor-pointer hover:underline font-medium"
           >
-            {isSignUp ? "Sign In" : "Sign Up"}
+            {isSignUp ? "Entrar" : "Registre-se"}
           </span>
         </p>
       </CardContent>
