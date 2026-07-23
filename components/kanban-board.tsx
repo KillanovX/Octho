@@ -35,6 +35,13 @@ const avatarMap: Record<string, string> = {
   RP: "https://images.shadcnspace.com/assets/profiles/user-4.jpg",
 }
 
+const columnDotColors: Record<string, string> = {
+  backlog: "bg-muted-foreground",
+  todo: "bg-chart-2",
+  in_progress: "bg-chart-3",
+  done: "bg-chart-4",
+}
+
 export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
   const { userData, moveTask } = useApp()
   const { tasks } = userData
@@ -44,10 +51,18 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
   const [createColumn, setCreateColumn] = useState<ColumnId | null>(null)
   const [dragOverCol, setDragOverCol] = useState<ColumnId | null>(null)
   const [dragOverCardId, setDragOverCardId] = useState<string | null>(null)
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null)
 
   const handleDragStart = (e: DragEvent, taskId: string) => {
     e.dataTransfer.setData("text/plain", taskId)
     e.dataTransfer.effectAllowed = "move"
+    setDraggingTaskId(taskId)
+  }
+
+  const handleDragEnd = () => {
+    setDraggingTaskId(null)
+    setDragOverCol(null)
+    setDragOverCardId(null)
   }
 
   const handleDragOverColumn = (e: DragEvent, colId: ColumnId) => {
@@ -69,6 +84,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
     }
     setDragOverCol(null)
     setDragOverCardId(null)
+    setDraggingTaskId(null)
   }
 
   const handleDragOverCard = (e: DragEvent, overTaskId: string, colId: ColumnId) => {
@@ -88,12 +104,13 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
     }
     setDragOverCol(null)
     setDragOverCardId(null)
+    setDraggingTaskId(null)
   }
 
   return (
     <>
-      <div className={cn("rounded-xl border border-border bg-card", fullWidth ? "flex-1" : "")}>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+      <div className={cn("rounded-xl border border-border bg-card overflow-hidden", fullWidth ? "flex-1" : "")}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 bg-card/80">
           <div>
             <h2 className="text-sm font-semibold text-card-foreground">Quadro Kanban</h2>
             <p className="text-xs text-muted-foreground">Todas as tarefas do projeto Octho Core</p>
@@ -119,9 +136,9 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
             return (
               <div key={col.id} className="flex w-72 shrink-0 flex-col">
                 <div className="mb-3 flex items-center gap-2 px-1">
-                  <span className={cn("size-2.5 rounded-full", dotColor(col.id))} />
-                  <span className="text-sm font-medium text-card-foreground">{col.name}</span>
-                  <span className="rounded bg-muted px-1.5 text-xs font-medium text-muted-foreground">
+                  <span className={cn("size-2 rounded-full shrink-0 transition-transform duration-200", columnDotColors[col.id] || "bg-muted-foreground")} />
+                  <span className="text-sm font-semibold text-card-foreground">{col.name}</span>
+                  <span className="rounded-md bg-muted px-1.5 text-xs font-bold text-muted-foreground">
                     {colTasks.length}
                   </span>
                   {colHours > 0 && (
@@ -132,7 +149,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
                   )}
                   <button
                     onClick={() => setCreateColumn(col.id)}
-                    className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    className="rounded-lg p-1 text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground hover:scale-110"
                     title={`Adicionar tarefa em ${col.name}`}
                   >
                     <Plus className="size-4" />
@@ -141,8 +158,10 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
 
                 <div
                   className={cn(
-                    "flex flex-col gap-2 min-h-[120px] rounded-lg p-1 transition-colors",
-                    isDragOver ? "bg-primary/10 ring-2 ring-primary/30" : "bg-accent/20"
+                    "flex flex-col gap-2 min-h-[120px] rounded-xl p-1.5 transition-all duration-200",
+                    isDragOver
+                      ? "bg-primary/10 ring-2 ring-primary/40 ring-offset-1"
+                      : "bg-muted/30"
                   )}
                   onDragOver={(e) => handleDragOverColumn(e, col.id)}
                   onDragLeave={handleDragLeaveColumn}
@@ -155,14 +174,20 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
                         task={t}
                         onEdit={() => setEditTask(t)}
                         onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
                         onDragOverCard={handleDragOverCard}
                         onDropCard={handleDropCard}
                         isDragOver={dragOverCardId === t.id}
+                        isDragging={draggingTaskId === t.id}
                       />
                     ))
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-muted-foreground border border-dashed border-border rounded-lg">
-                      Arraste tarefas aqui
+                    <div className="flex flex-col items-center justify-center py-10 text-center text-xs text-muted-foreground border border-dashed border-border/60 rounded-xl transition-colors">
+                      {isDragOver ? (
+                        <span className="text-primary font-medium animate-in fade-in">Soltar aqui</span>
+                      ) : (
+                        <span>Arraste tarefas aqui</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -171,7 +196,6 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
           })}
         </div>
       </div>
-
 
       <TaskDetailsModal
         open={!!editTask}
@@ -187,30 +211,24 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
   )
 }
 
-function dotColor(id: string) {
-  switch (id) {
-    case "backlog": return "bg-muted-foreground"
-    case "todo": return "bg-chart-2"
-    case "in_progress": return "bg-chart-3"
-    case "done": return "bg-chart-4"
-    default: return "bg-muted-foreground"
-  }
-}
-
 function TaskCard({
   task,
   onEdit,
   onDragStart,
+  onDragEnd,
   onDragOverCard,
   onDropCard,
   isDragOver,
+  isDragging,
 }: {
   task: Task
   onEdit: () => void
   onDragStart: (e: DragEvent, taskId: string) => void
+  onDragEnd: () => void
   onDragOverCard: (e: DragEvent, overTaskId: string, colId: ColumnId) => void
   onDropCard: (e: DragEvent, overTaskId: string, colId: ColumnId) => void
   isDragOver: boolean
+  isDragging: boolean
 }) {
   const p = priorityConfig[task.priority]
 
@@ -218,22 +236,29 @@ function TaskCard({
     <article
       draggable
       onDragStart={(e) => onDragStart(e, task.id)}
+      onDragEnd={onDragEnd}
       onDragOver={(e) => onDragOverCard(e, task.id, task.column)}
       onDrop={(e) => onDropCard(e, task.id, task.column)}
       onClick={onEdit}
       className={cn(
-        "group cursor-pointer rounded-lg border border-border bg-background p-3 transition-all hover:border-primary/40 hover:shadow-sm active:opacity-75",
-        isDragOver && "border-t-2 border-t-primary pt-2.5"
+        "group cursor-pointer rounded-xl border border-border bg-background p-3.5",
+        "transition-all duration-200 ease-out",
+        "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-black/8",
+        "active:translate-y-0 active:shadow-none",
+        isDragOver && "border-t-2 border-t-primary",
+        isDragging && "opacity-40 scale-95 rotate-1"
       )}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <GripVertical className="size-3 text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100 shrink-0" />
-          <span className="font-mono text-xs text-muted-foreground shrink-0">{task.code}</span>
+          <GripVertical className="size-3 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 shrink-0 cursor-grab" />
+          <span className="font-mono text-[11px] text-muted-foreground shrink-0 bg-muted/60 px-1.5 py-0.5 rounded-md">
+            {task.code}
+          </span>
         </div>
 
         {/* Responsavel (Avatar + Full Name) */}
-        <div className="flex items-center gap-1.5 shrink-0 bg-muted/40 rounded-full pl-1 pr-2 py-0.5 border border-border/50">
+        <div className="flex items-center gap-1.5 shrink-0 bg-muted/40 rounded-full pl-1 pr-2 py-0.5 border border-border/50 transition-all duration-150 group-hover:border-border">
           <Avatar className="size-5 shrink-0 border border-border">
             {avatarMap[task.assignee] && <AvatarImage src={avatarMap[task.assignee]} alt={task.assignee} />}
             <AvatarFallback
@@ -249,7 +274,7 @@ function TaskCard({
         </div>
       </div>
 
-      <p className="mt-2 text-sm leading-snug text-card-foreground text-pretty">{task.title}</p>
+      <p className="mt-2.5 text-sm leading-snug text-card-foreground text-pretty font-medium">{task.title}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <span className={cn("flex items-center", p.className)} title={p.label}>
@@ -260,7 +285,7 @@ function TaskCard({
           return (
             <span
               key={l.name}
-              className="flex items-center gap-1 rounded-full border border-border/80 px-2 py-0.5 text-[11px] font-medium text-foreground bg-card shadow-2xs"
+              className="flex items-center gap-1 rounded-full border border-border/80 px-2 py-0.5 text-[11px] font-medium text-foreground bg-card shadow-xs transition-all duration-150 hover:border-border"
             >
               <span className="flex items-center justify-center size-3 rounded-full" style={{ backgroundColor: l.color }}>
                 {TagIconComp && <TagIconComp className="size-2 text-white" />}

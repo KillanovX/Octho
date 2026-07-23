@@ -14,7 +14,6 @@ import { TaskDetailsModal } from "@/components/task-details-modal"
 import { AuthModal } from "@/components/auth-modal"
 import { useApp } from "@/lib/context"
 import { Task } from "@/lib/data"
-import { KanbanSquare, Layers, Clock, BarChart3, Settings, Inbox, Construction } from "lucide-react"
 
 import { TimeLogView } from "@/components/views/time-log-view"
 import { ReportsView } from "@/components/views/reports-view"
@@ -22,6 +21,18 @@ import { ProjectsView } from "@/components/views/projects-view"
 import { InboxView } from "@/components/views/inbox-view"
 import { SettingsView } from "@/components/views/settings-view"
 import { AdminView } from "@/components/views/admin-view"
+
+import SignInForm from "@/components/ui/sign-in-form"
+import { BeamsBackground } from "@/components/ui/beams-background"
+
+// Wraps any view content with the CSS fade-in animation
+function ViewWrapper({ children, viewKey }: { children: React.ReactNode; viewKey: string }) {
+  return (
+    <div key={viewKey} className="flex-1 flex flex-col overflow-hidden view-animate">
+      {children}
+    </div>
+  )
+}
 
 function MyTasksView() {
   const { userData, currentUser } = useApp()
@@ -33,40 +44,40 @@ function MyTasksView() {
     <>
       <div className="flex-1 overflow-y-auto p-6">
         <div className="mx-auto max-w-[900px]">
-          <h2 className="mb-1 text-lg font-semibold text-foreground">Minhas Tarefas</h2>
+          <h2 className="mb-1 text-xl font-bold text-foreground">Minhas Tarefas</h2>
           <p className="mb-6 text-sm text-muted-foreground">
             Tarefas atribuídas a {currentUser.name.split(" ")[0]}
           </p>
           {myTasks.length > 0 ? (
             <div className="flex flex-col gap-2">
-              {myTasks.map(t => (
+              {myTasks.map((t, i) => (
                 <button
                   key={t.id}
                   onClick={() => setEditTask(t)}
-                  className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary/40"
+                  style={{ animationDelay: `${i * 40}ms`, animationFillMode: "both" }}
+                  className="interactive-card count-animate flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-left"
                 >
-                  <span className="font-mono text-xs text-muted-foreground">{t.code}</span>
-                  <span className="flex-1 text-sm text-card-foreground">{t.title}</span>
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <span className="font-mono text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md">{t.code}</span>
+                  <span className="flex-1 text-sm font-medium text-card-foreground">{t.title}</span>
+                  <span className="rounded-lg bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">
                     {t.column === "backlog" ? "Backlog" : t.column === "todo" ? "A fazer" : t.column === "in_progress" ? "Em progresso" : "Concluído"}
                   </span>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-sm text-muted-foreground">
-              Nenhuma tarefa atribuída a você
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
+              <span className="text-4xl mb-3">✅</span>
+              <p className="text-sm font-medium text-muted-foreground">Nenhuma tarefa atribuída a você</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Tarefas atribuídas para {currentUser.name.split(" ")[0]} aparecerão aqui</p>
             </div>
           )}
         </div>
       </div>
-      <TaskModal open={!!editTask} onClose={() => setEditTask(null)} task={editTask} />
+      <TaskDetailsModal open={!!editTask} onClose={() => setEditTask(null)} task={editTask} />
     </>
   )
 }
-
-import SignInForm from "@/components/ui/sign-in-form"
-import { BeamsBackground } from "@/components/ui/beams-background"
 
 export default function Page() {
   const { activeView, isAuthenticated, isAuthModalOpen, closeAuthModal } = useApp()
@@ -96,40 +107,77 @@ export default function Page() {
         <DashboardHeader />
 
         {activeView === "dashboard" && (
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
-              <StatCards />
+          <ViewWrapper viewKey="dashboard">
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
+                <StatCards />
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-2">
-                  <WeeklyHoursChart />
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                  <div className="lg:col-span-2">
+                    <WeeklyHoursChart />
+                  </div>
+                  <ActivityBreakdown />
                 </div>
-                <ActivityBreakdown />
-              </div>
 
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
-                <KanbanBoard />
-                <ActivityFeed />
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
+                  <KanbanBoard />
+                  <ActivityFeed />
+                </div>
               </div>
             </div>
-          </div>
+          </ViewWrapper>
         )}
 
         {activeView === "kanban" && (
-          <div className="flex-1 overflow-y-auto p-6">
-            <KanbanBoard fullWidth />
-          </div>
+          <ViewWrapper viewKey="kanban">
+            <div className="flex-1 overflow-y-auto p-6">
+              <KanbanBoard fullWidth />
+            </div>
+          </ViewWrapper>
         )}
 
-        {activeView === "my-tasks" && <MyTasksView />}
-        {activeView === "inbox" && <InboxView />}
-        {activeView === "projects" && <ProjectsView />}
-        {activeView === "time-log" && <TimeLogView />}
-        {activeView === "reports" && <ReportsView />}
-        {activeView === "settings" && <SettingsView />}
-        {activeView === "admin" && <AdminView />}
-      </main>
+        {activeView === "my-tasks" && (
+          <ViewWrapper viewKey="my-tasks">
+            <MyTasksView />
+          </ViewWrapper>
+        )}
 
+        {activeView === "inbox" && (
+          <ViewWrapper viewKey="inbox">
+            <InboxView />
+          </ViewWrapper>
+        )}
+
+        {activeView === "projects" && (
+          <ViewWrapper viewKey="projects">
+            <ProjectsView />
+          </ViewWrapper>
+        )}
+
+        {activeView === "time-log" && (
+          <ViewWrapper viewKey="time-log">
+            <TimeLogView />
+          </ViewWrapper>
+        )}
+
+        {activeView === "reports" && (
+          <ViewWrapper viewKey="reports">
+            <ReportsView />
+          </ViewWrapper>
+        )}
+
+        {activeView === "settings" && (
+          <ViewWrapper viewKey="settings">
+            <SettingsView />
+          </ViewWrapper>
+        )}
+
+        {activeView === "admin" && (
+          <ViewWrapper viewKey="admin">
+            <AdminView />
+          </ViewWrapper>
+        )}
+      </main>
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onSelectTask={handleSelectTask} />
       <TaskDetailsModal open={!!editTask} onClose={() => setEditTask(null)} task={editTask} />

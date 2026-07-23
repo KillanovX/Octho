@@ -16,7 +16,6 @@ import {
   ShieldCheck,
   VerifiedIcon,
   LogOut,
-  UserPlus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp, type ViewId } from "@/lib/context"
@@ -51,8 +50,8 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 lg:flex">
       {/* Workspace switcher */}
-      <button className="mb-6 flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent">
-        <span className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-tr from-[#0050D7] via-[#0F6FFF] to-[#5EC9FF] p-1 shadow-sm shrink-0">
+      <button className="mb-5 flex items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-all duration-150 hover:bg-sidebar-accent group">
+        <span className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-tr from-[#0050D7] via-[#0F6FFF] to-[#5EC9FF] p-1.5 shadow-md shrink-0 transition-transform duration-200 group-hover:scale-105">
           <Image
             src="/branding/symbol/octho-symbol-white-512.png"
             alt="Octho Symbol"
@@ -62,20 +61,20 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
           />
         </span>
         <span className="flex-1 text-sm font-bold text-sidebar-foreground">Octho</span>
-        <ChevronDown className="size-4 text-muted-foreground" />
+        <ChevronDown className="size-4 text-muted-foreground transition-transform duration-200 group-hover:text-sidebar-foreground" />
       </button>
 
       {/* Search */}
       <button
         onClick={onOpenSearch}
-        className="mb-4 flex items-center gap-2 rounded-md border border-sidebar-border bg-background/50 px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent"
+        className="mb-5 flex items-center gap-2.5 rounded-xl border border-sidebar-border bg-background/60 px-3 py-2 text-sm text-muted-foreground transition-all duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground hover:border-sidebar-ring/40 group"
       >
-        <Search className="size-4" />
-        <span>Buscar</span>
-        <kbd className="ml-auto rounded border border-border px-1.5 font-mono text-[10px]">⌘K</kbd>
+        <Search className="size-4 shrink-0 transition-colors group-hover:text-primary" />
+        <span className="flex-1 text-left">Buscar</span>
+        <kbd className="ml-auto rounded-md border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground bg-muted/60">⌘K</kbd>
       </button>
 
-      <nav className="flex flex-col gap-0.5">
+      <nav className="flex flex-col gap-0.5" aria-label="Navegação principal">
         {nav.map((item) => (
           <NavItem
             key={item.name}
@@ -88,10 +87,10 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
         ))}
       </nav>
 
-      <p className="mb-1 mt-6 px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="mb-1.5 mt-6 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
         Workspace
       </p>
-      <nav className="flex flex-col gap-0.5">
+      <nav className="flex flex-col gap-0.5" aria-label="Workspace">
         {workspace.map((item) => (
           <NavItem
             key={item.name}
@@ -122,13 +121,13 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
 
         {/* User Switcher Popover */}
         {showSwitcher && (
-          <div className="absolute bottom-12 left-0 right-0 z-50 mb-2 rounded-lg border border-border bg-card p-2 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <div className="absolute bottom-14 left-0 right-0 z-50 mb-1 rounded-xl border border-border bg-card p-2 shadow-xl shadow-black/10 animate-in fade-in slide-in-from-bottom-2 duration-200">
             {profilesList.length > 1 && (
               <>
                 <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Seus Perfis
                 </p>
-                <div className="flex flex-col gap-1 max-h-56 overflow-y-auto">
+                <div className="flex flex-col gap-0.5 max-h-56 overflow-y-auto">
                   {profilesList.map((u) => (
                     <button
                       key={u.id}
@@ -137,7 +136,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
                         setShowSwitcher(false)
                       }}
                       className={cn(
-                        "flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-sidebar-accent",
+                        "flex items-center gap-2.5 rounded-lg px-2 py-2 text-left text-xs transition-all duration-150 hover:bg-sidebar-accent",
                         currentUser.id === u.id && "bg-sidebar-accent font-medium"
                       )}
                     >
@@ -156,7 +155,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
                     </button>
                   ))}
                 </div>
-                <div className="my-1 border-t border-border" />
+                <div className="my-1.5 border-t border-border" />
               </>
             )}
 
@@ -165,7 +164,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
                 signOut()
                 setShowSwitcher(false)
               }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-destructive transition-colors hover:bg-sidebar-accent"
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-semibold text-destructive transition-colors hover:bg-destructive/10"
             >
               <LogOut className="size-3.5" />
               <span>Sair da conta</span>
@@ -175,10 +174,10 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
 
         <button
           onClick={() => setShowSwitcher(!showSwitcher)}
-          className="mt-3 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent"
+          className="mt-2 flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-all duration-150 hover:bg-sidebar-accent group"
         >
           <div className="relative shrink-0">
-            <Avatar className="size-7">
+            <Avatar className="size-7 transition-transform duration-200 group-hover:scale-105">
               {currentUser?.imageUrl && <AvatarImage src={currentUser.imageUrl} alt={userName} />}
               <AvatarFallback style={{ backgroundColor: avatarColor, color: "#fff" }} className="text-xs font-semibold">
                 {userAvatar}
@@ -220,17 +219,25 @@ function NavItem({
   return (
     <button
       onClick={onClick}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors",
+        "relative flex items-center gap-2.5 rounded-xl px-2 py-2 text-sm transition-all duration-150",
         active
-          ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-          : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
+          ? "nav-item-active bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
+          : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
       )}
     >
-      <Icon className="size-4 shrink-0" />
+      <Icon className={cn("size-4 shrink-0 transition-colors duration-150", active && "text-primary")} />
       <span className="flex-1 text-left">{label}</span>
       {badge && (
-        <span className="rounded-full bg-primary/15 px-1.5 text-xs font-medium text-primary">{badge}</span>
+        <span className={cn(
+          "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums min-w-[18px] text-center",
+          badge === "Admin"
+            ? "bg-primary/15 text-primary"
+            : "bg-destructive text-white"
+        )}>
+          {badge}
+        </span>
       )}
     </button>
   )
