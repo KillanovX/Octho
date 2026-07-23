@@ -80,3 +80,14 @@ export async function getUserProfile(userId: string) {
     return null
   }
 }
+
+export async function getAllSupabaseProfiles() {
+  if (!supabase) return []
+  try {
+    const { data, error } = await supabase.from("profiles").select("*")
+    if (error) return []
+    return data || []
+  } catch {
+    return []
+  }
+}

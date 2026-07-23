@@ -29,6 +29,8 @@ import {
 } from "@/lib/auth-service"
 import { useApp } from "@/lib/context"
 
+import { getAllSupabaseProfiles } from "@/lib/supabase"
+
 export function AdminView() {
   const { currentUser, profilesList, addProfile } = useApp()
   const [usersList, setUsersList] = useState<RegisteredUser[]>([])
@@ -53,24 +55,59 @@ export function AdminView() {
   const [formPassword, setFormPassword] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const reloadUsers = () => {
-    const list = getRegisteredUsers()
-    // Make sure Super Admin is listed even if created via Supabase or context
-    const superAdminExists = list.some((u) => u.email.toLowerCase() === "flavio.adsv@gmail.com")
-    if (!superAdminExists) {
-      const superAdminUser: RegisteredUser = {
-        id: "usr_super_admin",
-        name: currentUser.name || "Flavio Alves",
-        email: "flavio.adsv@gmail.com",
-        passwordHash: "••••••••",
-        avatar: "FA",
-        avatarColor: "#0F6FFF",
-        createdAt: Date.now(),
+  const reloadUsers = async () => {
+    const localUsers = getRegisteredUsers()
+    const map = new Map<string, RegisteredUser>()
+
+    // 1. Add Super Admin
+    map.set("flavio.adsv@gmail.com", {
+      id: "usr_super_admin",
+      name: currentUser.email?.toLowerCase() === "flavio.adsv@gmail.com" ? currentUser.name || "Flavio Alves" : "Flavio Alves",
+      email: "flavio.adsv@gmail.com",
+      passwordHash: "••••••••",
+      avatar: "FA",
+      avatarColor: "#0F6FFF",
+      createdAt: Date.now(),
+    })
+
+    // 2. Add local storage users
+    localUsers.forEach((u) => {
+      if (u.email) map.set(u.email.toLowerCase(), u)
+    })
+
+    // 3. Add profilesList from context
+    profilesList.forEach((p) => {
+      if (p.email && !map.has(p.email.toLowerCase())) {
+        map.set(p.email.toLowerCase(), {
+          id: p.id,
+          name: p.name,
+          email: p.email,
+          passwordHash: "••••••••",
+          avatar: p.avatar,
+          avatarColor: p.avatarColor || "#6366f1",
+          createdAt: Date.now(),
+        })
       }
-      setUsersList([superAdminUser, ...list])
-    } else {
-      setUsersList(list)
-    }
+    })
+
+    // 4. Fetch Supabase profiles if configured
+    const supaProfiles = await getAllSupabaseProfiles()
+    supaProfiles.forEach((sp: any) => {
+      const email = sp.email || sp.name
+      if (email && email.includes("@") && !map.has(email.toLowerCase())) {
+        map.set(email.toLowerCase(), {
+          id: sp.id,
+          name: sp.name || email.split("@")[0],
+          email: email.toLowerCase(),
+          passwordHash: "••••••••",
+          avatar: sp.avatar || (sp.name ? sp.name.slice(0, 2).toUpperCase() : "US"),
+          avatarColor: sp.avatar_color || "#6366f1",
+          createdAt: sp.created_at ? new Date(sp.created_at).getTime() : Date.now(),
+        })
+      }
+    })
+
+    setUsersList(Array.from(map.values()))
   }
 
   useEffect(() => {
