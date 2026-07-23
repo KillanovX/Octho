@@ -153,22 +153,14 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
 
       <Card className="relative w-full rounded-2xl border border-white/15 bg-card/95 backdrop-blur-md shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95),0_0_40px_-5px_rgba(99,102,241,0.25)] transition-all">
       <CardContent className="p-6 flex flex-col gap-6">
-        {/* Brand Header (Centered Official Logo Image) */}
+        {/* Brand Header (Centered Official Light Logo Image) */}
         <div className="flex items-center justify-center py-1">
-          <Image
-            src="/branding/logo/octho-horizontal-dark.png"
-            alt="Octho"
-            width={160}
-            height={44}
-            className="h-10 w-auto object-contain dark:block hidden"
-            priority
-          />
           <Image
             src="/branding/logo/octho-horizontal-light.png"
             alt="Octho"
             width={160}
             height={44}
-            className="h-10 w-auto object-contain dark:hidden block"
+            className="h-10 w-auto object-contain"
             priority
           />
         </div>
