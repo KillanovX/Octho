@@ -261,13 +261,14 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           </Button>
         </form>
 
-        {/* Social login buttons */}
-        <div className="flex flex-col gap-3 mt-1">
+        {/* Social login buttons (Icon-only side by side) */}
+        <div className="flex items-center justify-center gap-3 mt-1">
           <Button
             type="button"
             variant="outline"
             onClick={() => handleSocialClick("Google")}
-            className="w-full h-12 rounded-lg flex items-center justify-center gap-3"
+            title="Entrar com Google"
+            className="flex-1 h-11 rounded-xl border-border/80 bg-background hover:bg-accent flex items-center justify-center transition-all"
           >
             <Image
               src="https://www.svgrepo.com/show/355037/google.svg"
@@ -275,14 +276,14 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
               width={20}
               height={20}
             />
-            Continue with Google
           </Button>
 
           <Button
             type="button"
             variant="outline"
             onClick={() => handleSocialClick("Apple")}
-            className="w-full h-12 rounded-lg flex items-center justify-center gap-3"
+            title="Entrar com Apple"
+            className="flex-1 h-11 rounded-xl border-border/80 bg-background hover:bg-accent flex items-center justify-center transition-all"
           >
             <Image
               src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg"
@@ -290,23 +291,24 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
               width={20}
               height={20}
               unoptimized
+              className="dark:invert"
             />
-            Continue with Apple
           </Button>
 
           <Button
             type="button"
             variant="outline"
             onClick={() => handleSocialClick("GitHub")}
-            className="w-full h-12 rounded-lg flex items-center justify-center gap-3"
+            title="Entrar com GitHub"
+            className="flex-1 h-11 rounded-xl border-border/80 bg-background hover:bg-accent flex items-center justify-center transition-all"
           >
             <Image
               src="https://www.svgrepo.com/show/303615/github-icon-1-logo.svg"
               alt="GitHub"
               width={20}
               height={20}
+              className="dark:invert"
             />
-            Continue with GitHub
           </Button>
         </div>
 
