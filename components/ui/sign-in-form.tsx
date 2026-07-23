@@ -154,7 +154,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
       <Card className="relative w-full rounded-2xl border border-white/15 bg-card/95 backdrop-blur-md shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95),0_0_40px_-5px_rgba(99,102,241,0.25)] transition-all">
       <CardContent className="p-6 flex flex-col gap-6">
         {/* Brand Header (Centered Logo & Name) */}
-        <div className="flex flex-col items-center justify-center border-b border-border pb-5 gap-2.5">
+        <div className="flex flex-col items-center justify-center gap-2.5 pb-1">
           <div className="relative size-12 flex items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0050D7] via-[#0F6FFF] to-[#5EC9FF] p-2.5 shadow-lg shadow-[#0F6FFF]/20">
             <Image
               src="/branding/symbol/octho-symbol-white-512.png"
