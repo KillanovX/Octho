@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface AnimatedGradientBackgroundProps {
@@ -48,7 +47,7 @@ export function BeamsBackground({
     const beamsRef = useRef<Beam[]>([]);
     const animationFrameRef = useRef<number>(0);
     const lastTimeRef = useRef<number>(0);
-    const MINIMUM_BEAMS = 20;
+    const MINIMUM_BEAMS = 15;
 
     const opacityMap = {
         subtle: 0.7,
@@ -66,14 +65,14 @@ export function BeamsBackground({
         const updateCanvasSize = () => {
             const w = window.innerWidth;
             const h = window.innerHeight;
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
             canvas.width = w * dpr;
             canvas.height = h * dpr;
             canvas.style.width = `${w}px`;
             canvas.style.height = `${h}px`;
             ctx.scale(dpr, dpr);
 
-            const totalBeams = MINIMUM_BEAMS * 1.5;
+            const totalBeams = MINIMUM_BEAMS * 1.2;
             beamsRef.current = Array.from({ length: totalBeams }, () =>
                 createBeam(w, h)
             );
@@ -139,8 +138,9 @@ export function BeamsBackground({
         function animate(timestamp: number) {
             if (!canvas || !ctx) return;
 
+            // Throttle rendering to ~30 FPS to ensure main thread availability for user inputs (INP < 50ms)
             const elapsed = timestamp - lastTimeRef.current;
-            if (elapsed > 20) {
+            if (elapsed > 32) {
                 lastTimeRef.current = timestamp;
                 const w = window.innerWidth;
                 const h = window.innerHeight;
@@ -178,58 +178,21 @@ export function BeamsBackground({
                 "relative min-h-screen w-full overflow-hidden bg-neutral-950",
                 className
             )}
+            style={{ contain: "paint layout" }}
         >
             {/* Ambient background glow gradient */}
             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-950/40 via-neutral-950 to-cyan-950/40 pointer-events-none" />
 
-            {/* Glowing animated Canvas */}
+            {/* Glowing animated Canvas with CSS GPU blur */}
             <canvas
                 ref={canvasRef}
-                className="absolute inset-0 pointer-events-none transform-gpu will-change-transform"
-                style={{ filter: "blur(18px)" }}
+                className="absolute inset-0 pointer-events-none transform-gpu will-change-transform opacity-85"
+                style={{ filter: "blur(16px)" }}
             />
 
-            {/* Soft backdrop blur overlay */}
-            <motion.div
-                className="absolute inset-0 bg-neutral-950/20 pointer-events-none"
-                animate={{
-                    opacity: [0.1, 0.25, 0.1],
-                }}
-                transition={{
-                    duration: 8,
-                    ease: "easeInOut",
-                    repeat: Number.POSITIVE_INFINITY,
-                }}
-                style={{
-                    backdropFilter: "blur(40px)",
-                }}
-            />
-
+            {/* Content Container */}
             <div className="relative z-10 flex min-h-screen w-full items-center justify-center p-4">
-                {children ? (
-                    children
-                ) : (
-                    <div className="flex flex-col items-center justify-center gap-6 px-4 text-center">
-                        <motion.h1
-                            className="text-6xl md:text-7xl lg:text-8xl font-semibold text-white tracking-tighter"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8 }}
-                        >
-                            Beams
-                            <br />
-                            Background
-                        </motion.h1>
-                        <motion.p
-                            className="text-lg md:text-2xl lg:text-3xl text-white/70 tracking-tighter"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8 }}
-                        >
-                            For your pleasure
-                        </motion.p>
-                    </div>
-                )}
+                {children}
             </div>
         </div>
     );
