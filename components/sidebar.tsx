@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import {
   LayoutDashboard,
   Inbox,
@@ -12,7 +13,6 @@ import {
   Settings,
   Search,
   ChevronDown,
-  Zap,
   VerifiedIcon,
   LogOut,
   UserPlus,
@@ -49,10 +49,16 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
     <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 lg:flex">
       {/* Workspace switcher */}
       <button className="mb-6 flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent">
-        <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Zap className="size-4" />
+        <span className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-tr from-[#0050D7] via-[#0F6FFF] to-[#5EC9FF] p-1 shadow-sm shrink-0">
+          <Image
+            src="/branding/symbol/octho-symbol-white-512.png"
+            alt="Octho Symbol"
+            width={24}
+            height={24}
+            className="object-contain"
+          />
         </span>
-        <span className="flex-1 text-sm font-semibold text-sidebar-foreground">Octho</span>
+        <span className="flex-1 text-sm font-bold text-sidebar-foreground">Octho</span>
         <ChevronDown className="size-4 text-muted-foreground" />
       </button>
 

@@ -155,10 +155,16 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
       <CardContent className="p-6 flex flex-col gap-6">
         {/* Brand Header */}
         <div className="flex items-center justify-between border-b border-border pb-4">
-          <div className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold shadow-sm">
-              <Zap className="size-4" />
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="relative size-9 shrink-0 flex items-center justify-center rounded-xl bg-gradient-to-tr from-[#0050D7] via-[#0F6FFF] to-[#5EC9FF] p-1.5 shadow-md">
+              <Image
+                src="/branding/symbol/octho-symbol-white-512.png"
+                alt="Octho Symbol"
+                width={36}
+                height={36}
+                className="object-contain"
+              />
+            </div>
             <div>
               <h2 className="text-base font-bold text-foreground leading-tight">Octho Gestão</h2>
               <p className="text-xs text-muted-foreground">
