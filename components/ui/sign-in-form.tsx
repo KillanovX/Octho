@@ -143,6 +143,15 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
 
         const { data, error } = await signInWithSupabase(email, password)
         if (error) {
+          // Fallback to local registered accounts if password was updated locally
+          const localRes = authenticateLocalUser(email, password)
+          if (localRes.user) {
+            addProfile(localRes.user)
+            login(localRes.user)
+            setSuccessMsg(`Bem-vindo de volta, ${localRes.user.name}!`)
+            if (onSuccess) setTimeout(onSuccess, 500)
+            return
+          }
           setErrorMsg(error.message || "E-mail ou senha incorretos.")
         } else if (data?.user) {
           const user = data.user
