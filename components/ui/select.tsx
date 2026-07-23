@@ -196,10 +196,11 @@ export function Select<T extends string = string>({
                 onClick={() => !option.disabled && handleSelect(option.value)}
                 onMouseEnter={() => !option.disabled && setHighlightedIndex(index)}
                 className={cn(
-                  "relative flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-colors duration-100 select-none",
+                  "relative flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-colors duration-75 select-none",
                   option.disabled && "cursor-not-allowed opacity-40",
-                  !option.disabled && isHighlighted && "bg-accent text-accent-foreground",
-                  !option.disabled && isSelected && !isHighlighted && "bg-accent/60 text-foreground"
+                  !option.disabled && "hover:bg-accent hover:text-accent-foreground",
+                  !option.disabled && isSelected && "bg-primary/10 text-primary",
+                  !option.disabled && isHighlighted && "bg-accent text-accent-foreground"
                 )}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
