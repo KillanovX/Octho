@@ -64,6 +64,7 @@ function MyTasksView() {
 }
 
 import SignInForm from "@/components/ui/sign-in-form"
+import { BeamsBackground } from "@/components/ui/beams-background"
 
 export default function Page() {
   const { activeView, isAuthenticated, isAuthModalOpen, closeAuthModal } = useApp()
@@ -77,15 +78,11 @@ export default function Page() {
 
   if (!isAuthenticated || activeView === "login") {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background p-4 relative overflow-hidden">
-        {/* Background glow effects */}
-        <div className="absolute -top-40 -left-40 size-96 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-40 -right-40 size-96 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-
+      <BeamsBackground intensity="strong">
         <div className="relative z-10 w-full max-w-md flex flex-col items-center">
           <SignInForm />
         </div>
-      </div>
+      </BeamsBackground>
     )
   }
 
