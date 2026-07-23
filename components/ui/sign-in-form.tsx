@@ -291,7 +291,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
               width={20}
               height={20}
               unoptimized
-              className="dark:invert"
+              className="brightness-0 dark:invert transition-all"
             />
           </Button>
 
@@ -307,7 +307,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
               alt="GitHub"
               width={20}
               height={20}
-              className="dark:invert"
+              className="brightness-0 dark:invert transition-all"
             />
           </Button>
         </div>
