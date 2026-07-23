@@ -47,7 +47,8 @@ export function BeamsBackground({
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const beamsRef = useRef<Beam[]>([]);
     const animationFrameRef = useRef<number>(0);
-    const MINIMUM_BEAMS = 20;
+    const lastTimeRef = useRef<number>(0);
+    const MINIMUM_BEAMS = 15;
 
     const opacityMap = {
         subtle: 0.7,
@@ -59,18 +60,19 @@ export function BeamsBackground({
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const ctx = canvas.getContext("2d");
+        const ctx = canvas.getContext("2d", { alpha: true });
         if (!ctx) return;
 
         const updateCanvasSize = () => {
-            const dpr = window.devicePixelRatio || 1;
+            // Lower resolution scale for canvas to maximize GPU performance & eliminate INP delays
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
             canvas.style.width = `${window.innerWidth}px`;
             canvas.style.height = `${window.innerHeight}px`;
             ctx.scale(dpr, dpr);
 
-            const totalBeams = MINIMUM_BEAMS * 1.5;
+            const totalBeams = MINIMUM_BEAMS * 1.2;
             beamsRef.current = Array.from({ length: totalBeams }, () =>
                 createBeam(canvas.width, canvas.height)
             );
@@ -102,7 +104,6 @@ export function BeamsBackground({
             ctx.translate(beam.x, beam.y);
             ctx.rotate((beam.angle * Math.PI) / 180);
 
-            // Calculate pulsing opacity
             const pulsingOpacity =
                 beam.opacity *
                 (0.8 + Math.sin(beam.pulse) * 0.2) *
@@ -110,7 +111,6 @@ export function BeamsBackground({
 
             const gradient = ctx.createLinearGradient(0, 0, 0, beam.length);
 
-            // Enhanced gradient with multiple color stops
             gradient.addColorStop(0, `hsla(${beam.hue}, 85%, 65%, 0)`);
             gradient.addColorStop(
                 0.1,
@@ -135,29 +135,32 @@ export function BeamsBackground({
             ctx.restore();
         }
 
-        function animate() {
+        function animate(timestamp: number) {
             if (!canvas || !ctx) return;
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.filter = "blur(35px)";
+            // Throttle to 30 FPS to free main thread for instant user input response
+            const elapsed = timestamp - lastTimeRef.current;
+            if (elapsed > 32) {
+                lastTimeRef.current = timestamp;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const totalBeams = beamsRef.current.length;
-            beamsRef.current.forEach((beam, index) => {
-                beam.y -= beam.speed;
-                beam.pulse += beam.pulseSpeed;
+                const totalBeams = beamsRef.current.length;
+                beamsRef.current.forEach((beam, index) => {
+                    beam.y -= beam.speed;
+                    beam.pulse += beam.pulseSpeed;
 
-                // Reset beam when it goes off screen
-                if (beam.y + beam.length < -100) {
-                    resetBeam(beam, index, totalBeams);
-                }
+                    if (beam.y + beam.length < -100) {
+                        resetBeam(beam, index, totalBeams);
+                    }
 
-                drawBeam(ctx, beam);
-            });
+                    drawBeam(ctx, beam);
+                });
+            }
 
             animationFrameRef.current = requestAnimationFrame(animate);
         }
 
-        animate();
+        animationFrameRef.current = requestAnimationFrame(animate);
 
         return () => {
             window.removeEventListener("resize", updateCanvasSize);
@@ -176,12 +179,11 @@ export function BeamsBackground({
         >
             <canvas
                 ref={canvasRef}
-                className="absolute inset-0"
-                style={{ filter: "blur(15px)" }}
+                className="absolute inset-0 pointer-events-none blur-3xl transform-gpu will-change-transform"
             />
 
             <motion.div
-                className="absolute inset-0 bg-neutral-950/5"
+                className="absolute inset-0 bg-neutral-950/5 pointer-events-none"
                 animate={{
                     opacity: [0.05, 0.15, 0.05],
                 }}
@@ -189,9 +191,6 @@ export function BeamsBackground({
                     duration: 10,
                     ease: "easeInOut",
                     repeat: Number.POSITIVE_INFINITY,
-                }}
-                style={{
-                    backdropFilter: "blur(50px)",
                 }}
             />
 

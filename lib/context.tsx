@@ -431,9 +431,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUsersStore((prev) => {
         const current = prev[currentUser.id] || buildDefaultUserData()
         const updated = updater(current)
-        try {
-          localStorage.setItem(`octho_data_${currentUser.id}`, JSON.stringify(updated))
-        } catch {}
+        setTimeout(() => {
+          try {
+            localStorage.setItem(`octho_data_${currentUser.id}`, JSON.stringify(updated))
+          } catch {}
+        }, 0)
         return {
           ...prev,
           [currentUser.id]: updated,
