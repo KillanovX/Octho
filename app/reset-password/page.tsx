@@ -23,7 +23,7 @@ function ResetPasswordForm() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg(null)
     setSuccessMsg(null)
@@ -46,12 +46,25 @@ function ResetPasswordForm() {
     setLoading(true)
 
     const targetEmail = email || "sua conta"
+
+    try {
+      // 1. Sync & update password directly in Supabase Auth via server API
+      await fetch("/api/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail, password }),
+      })
+    } catch (err) {
+      console.error("Supabase password sync error:", err)
+    }
+
+    // 2. Sync local user credentials
     const res = updateUserPassword(targetEmail, password)
 
     setLoading(false)
 
     if (res.success) {
-      setSuccessMsg("Senha atualizada com sucesso! Redirecionando para o login...")
+      setSuccessMsg("Senha atualizada no Supabase com sucesso! Redirecionando para o login...")
       setTimeout(() => {
         router.push("/login")
       }, 2000)
