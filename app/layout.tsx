@@ -14,17 +14,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/branding/favicons/favicon-32.png',
-        sizes: '32x32',
-        type: 'image/png',
-      },
-      {
-        url: '/branding/favicons/favicon-512.png',
+        url: '/branding/symbol/octho-symbol-gradient-512.png',
         sizes: '512x512',
         type: 'image/png',
       },
     ],
-    apple: '/branding/app-icons/azul.png',
+    apple: '/branding/app-icons/branco-transparente.png',
   },
 }
 
