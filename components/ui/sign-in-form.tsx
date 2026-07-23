@@ -180,59 +180,50 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Name Field if Sign Up */}
           {isSignUp && (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="name">Nome completo</Label>
-              <div className="flex items-center gap-2 border rounded-lg px-3 h-12 focus-within:ring-2 focus-within:ring-ring">
-                <User className="h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Seu nome"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="border-0 shadow-none focus-visible:ring-0"
-                />
-              </div>
+            <div className="flex items-center gap-2 border rounded-lg px-3 h-12 focus-within:ring-2 focus-within:ring-ring">
+              <User className="h-5 w-5 text-muted-foreground" />
+              <Input
+                id="name"
+                type="text"
+                placeholder="Nome completo"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="border-0 shadow-none focus-visible:ring-0"
+              />
             </div>
           )}
 
           {/* Email */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="flex items-center gap-2 border rounded-lg px-3 h-12 focus-within:ring-2 focus-within:ring-ring">
-              <Mail className="h-5 w-5 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="border-0 shadow-none focus-visible:ring-0"
-              />
-            </div>
+          <div className="flex items-center gap-2 border rounded-lg px-3 h-12 focus-within:ring-2 focus-within:ring-ring">
+            <Mail className="h-5 w-5 text-muted-foreground" />
+            <Input
+              id="email"
+              type="email"
+              placeholder="E-mail"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="border-0 shadow-none focus-visible:ring-0"
+            />
           </div>
 
           {/* Password */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="password">Senha</Label>
-            <div className="flex items-center gap-2 border rounded-lg px-3 h-12 focus-within:ring-2 focus-within:ring-ring">
-              <Lock className="h-5 w-5 text-muted-foreground" />
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="border-0 shadow-none focus-visible:ring-0"
-              />
-            </div>
+          <div className="flex items-center gap-2 border rounded-lg px-3 h-12 focus-within:ring-2 focus-within:ring-ring">
+            <Lock className="h-5 w-5 text-muted-foreground" />
+            <Input
+              id="password"
+              type="password"
+              placeholder="Senha"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="border-0 shadow-none focus-visible:ring-0"
+            />
           </div>
 
           {/* Remember me & Forgot */}
