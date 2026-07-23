@@ -10,6 +10,7 @@ import {
   columns,
 } from "./data"
 import { supabase, isSupabaseConfigured, signOutSupabase, getUserProfile } from "./supabase"
+import { type Meeting } from "./meetings"
 
 // ─── User Profiles ──────────────────────────────────────────
 export type UserProfile = {
@@ -26,7 +27,7 @@ export type UserProfile = {
 export const users: UserProfile[] = []
 
 // ─── Views ──────────────────────────────────────────────────
-export type ViewId = "dashboard" | "inbox" | "my-tasks" | "kanban" | "projects" | "time-log" | "reports" | "settings" | "login" | "admin"
+export type ViewId = "dashboard" | "inbox" | "my-tasks" | "kanban" | "projects" | "time-log" | "reports" | "settings" | "login" | "admin" | "meetings"
 
 // ─── User Data ──────────────────────────────────────────────
 export type UserData = {
@@ -81,6 +82,12 @@ type AppContextType = {
   // Computed
   hoursMonth: number
   completedTasksMonth: number
+  // Meetings
+  meetings: Meeting[]
+  addMeeting: (m: Omit<Meeting, "id">) => Meeting
+  updateMeeting: (id: string, updates: Partial<Meeting>) => void
+  deleteMeeting: (id: string) => void
+  addMeetingHoursToTask: (meetingId: string, taskId: string) => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -261,6 +268,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [lastReadTimestamp, setLastReadTimestamp] = useState<Record<string, number>>({})
   const [supabaseLoaded, setSupabaseLoaded] = useState<Record<string, boolean>>({})
 
+  // ── Meetings state (per-user localStorage) ──
+  const [meetingsStore, setMeetingsStore] = useState<Record<string, Meeting[]>>({})
+
+  const meetings: Meeting[] = React.useMemo(
+    () => (currentUser.id ? (meetingsStore[currentUser.id] ?? []) : []),
+    [meetingsStore, currentUser.id]
+  )
+
+  const mutateMeetings = useCallback(
+    (updater: (prev: Meeting[]) => Meeting[]) => {
+      if (!currentUser.id) return
+      setMeetingsStore((prev) => {
+        const current = prev[currentUser.id] ?? []
+        const updated = updater(current)
+        setTimeout(() => {
+          try {
+            localStorage.setItem(`octho_meetings_${currentUser.id}`, JSON.stringify(updated))
+          } catch {}
+        }, 0)
+        return { ...prev, [currentUser.id]: updated }
+      })
+    },
+    [currentUser.id]
+  )
+
   // ── Restore Login Session & Persistence ──
   useEffect(() => {
     try {
@@ -277,6 +309,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (savedDataStr) {
             const savedData = JSON.parse(savedDataStr)
             setUsersStore((prev) => ({ ...prev, [savedUser.id]: savedData }))
+          }
+
+          const savedMeetingsStr = localStorage.getItem(`octho_meetings_${savedUser.id}`)
+          if (savedMeetingsStr) {
+            const savedMeetings = JSON.parse(savedMeetingsStr)
+            setMeetingsStore((prev) => ({ ...prev, [savedUser.id]: savedMeetings }))
           }
         }
       }
@@ -584,6 +622,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTimer({ taskId: null, taskCode: "", seconds: 0, running: false })
   }, [timer, userData.tasks, currentUser.id, mutateData, logActivity])
 
+  // ── Meetings CRUD ──
+  const addMeeting = useCallback(
+    (m: Omit<Meeting, "id">): Meeting => {
+      const newMeeting: Meeting = { ...m, id: crypto.randomUUID() }
+      mutateMeetings((prev) => [newMeeting, ...prev])
+      logActivity("agendou reunião", newMeeting.title)
+      return newMeeting
+    },
+    [mutateMeetings, logActivity]
+  )
+
+  const updateMeeting = useCallback(
+    (id: string, updates: Partial<Meeting>) => {
+      mutateMeetings((prev) => prev.map((m) => (m.id === id ? { ...m, ...updates } : m)))
+    },
+    [mutateMeetings]
+  )
+
+  const deleteMeeting = useCallback(
+    (id: string) => {
+      mutateMeetings((prev) => prev.filter((m) => m.id !== id))
+    },
+    [mutateMeetings]
+  )
+
+  const addMeetingHoursToTask = useCallback(
+    (meetingId: string, taskId: string) => {
+      const meeting = meetings.find((m) => m.id === meetingId)
+      if (!meeting || meeting.hoursAddedToTask) return
+      const hours = Math.round((meeting.durationMinutes / 60) * 100) / 100
+      const task = userData.tasks.find((t) => t.id === taskId)
+      if (!task) return
+      const updated = { ...task, hoursLogged: task.hoursLogged + hours }
+      mutateData((prev) => ({
+        ...prev,
+        tasks: prev.tasks.map((t) => (t.id === taskId ? updated : t)),
+      }))
+      mutateMeetings((prev) =>
+        prev.map((m) =>
+          m.id === meetingId
+            ? { ...m, hoursAddedToTask: true, linkedTaskId: taskId, linkedTaskCode: task.code, linkedTaskTitle: task.title }
+            : m
+        )
+      )
+      logActivity(`adicionou ${hours.toFixed(1)}h (reunião) em`, `${task.code} — ${task.title}`)
+      saveTaskToSupabase(currentUser.id, updated)
+    },
+    [meetings, userData.tasks, currentUser.id, mutateData, mutateMeetings, logActivity]
+  )
+
   // ── Notifications ──
   const markAllRead = useCallback(() => {
     if (!currentUser.id) return
@@ -620,6 +708,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       markAllRead,
       hoursMonth,
       completedTasksMonth,
+      meetings,
+      addMeeting,
+      updateMeeting,
+      deleteMeeting,
+      addMeetingHoursToTask,
     }),
     [
       currentUser,
@@ -649,6 +742,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       markAllRead,
       hoursMonth,
       completedTasksMonth,
+      meetings,
+      addMeeting,
+      updateMeeting,
+      deleteMeeting,
+      addMeetingHoursToTask,
     ]
   )
 

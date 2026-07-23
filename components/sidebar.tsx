@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   VerifiedIcon,
   LogOut,
+  Video,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp, type ViewId } from "@/lib/context"
@@ -32,6 +33,7 @@ const nav: NavDef[] = [
 const workspace: NavDef[] = [
   { name: "Quadro Kanban", icon: KanbanSquare, view: "kanban" },
   { name: "Projetos", icon: Layers, view: "projects" },
+  { name: "Reuniões", icon: Video, view: "meetings" },
   { name: "Registro de horas", icon: Clock, view: "time-log" },
   { name: "Relatórios", icon: BarChart3, view: "reports" },
 ]

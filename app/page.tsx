@@ -21,6 +21,7 @@ import { ProjectsView } from "@/components/views/projects-view"
 import { InboxView } from "@/components/views/inbox-view"
 import { SettingsView } from "@/components/views/settings-view"
 import { AdminView } from "@/components/views/admin-view"
+import { MeetingsView } from "@/components/views/meetings-view"
 
 import SignInForm from "@/components/ui/sign-in-form"
 import { BeamsBackground } from "@/components/ui/beams-background"
@@ -175,6 +176,12 @@ export default function Page() {
         {activeView === "admin" && (
           <ViewWrapper viewKey="admin">
             <AdminView />
+          </ViewWrapper>
+        )}
+
+        {activeView === "meetings" && (
+          <ViewWrapper viewKey="meetings">
+            <MeetingsView />
           </ViewWrapper>
         )}
       </main>
