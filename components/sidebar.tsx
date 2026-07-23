@@ -13,6 +13,7 @@ import {
   Settings,
   Search,
   ChevronDown,
+  ShieldCheck,
   VerifiedIcon,
   LogOut,
   UserPlus,
@@ -44,6 +45,8 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
   const userEmail = currentUser?.email || ""
   const userAvatar = currentUser?.avatar || "US"
   const avatarColor = currentUser?.avatarColor || "#6366f1"
+
+  const isSuperAdmin = currentUser?.email?.toLowerCase() === "flavio.adsv@gmail.com"
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 lg:flex">
@@ -98,6 +101,15 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
             onClick={() => setActiveView(item.view)}
           />
         ))}
+        {isSuperAdmin && (
+          <NavItem
+            icon={ShieldCheck}
+            label="Administração"
+            badge="Admin"
+            active={activeView === "admin"}
+            onClick={() => setActiveView("admin")}
+          />
+        )}
       </nav>
 
       <div className="mt-auto relative">

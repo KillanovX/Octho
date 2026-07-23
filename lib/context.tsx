@@ -26,7 +26,7 @@ export type UserProfile = {
 export const users: UserProfile[] = []
 
 // ─── Views ──────────────────────────────────────────────────
-export type ViewId = "dashboard" | "inbox" | "my-tasks" | "kanban" | "projects" | "time-log" | "reports" | "settings" | "login"
+export type ViewId = "dashboard" | "inbox" | "my-tasks" | "kanban" | "projects" | "time-log" | "reports" | "settings" | "login" | "admin"
 
 // ─── User Data ──────────────────────────────────────────────
 export type UserData = {

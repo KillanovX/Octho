@@ -110,3 +110,48 @@ export function updateUserPassword(email: string, newPassword: string): { succes
     return { success: false, error: "Falha ao salvar a nova senha no navegador." }
   }
 }
+
+export function deleteUserAccount(email: string): { success: boolean; error?: string } {
+  const users = getRegisteredUsers()
+  const normalizedEmail = email.trim().toLowerCase()
+  const filtered = users.filter((u) => u.email !== normalizedEmail)
+
+  if (filtered.length === users.length) {
+    return { success: false, error: "Usuário não encontrado." }
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+    return { success: true }
+  } catch {
+    return { success: false, error: "Falha ao excluir o usuário." }
+  }
+}
+
+export function updateUserProfile(email: string, updates: { name?: string }): { success: boolean; error?: string } {
+  const users = getRegisteredUsers()
+  const normalizedEmail = email.trim().toLowerCase()
+  const index = users.findIndex((u) => u.email === normalizedEmail)
+
+  if (index === -1) {
+    return { success: false, error: "Usuário não encontrado." }
+  }
+
+  if (updates.name) {
+    users[index].name = updates.name.trim()
+    users[index].avatar = updates.name
+      .trim()
+      .split(" ")
+      .map((p) => p[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "US"
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(users))
+    return { success: true }
+  } catch {
+    return { success: false, error: "Falha ao salvar as alterações do usuário." }
+  }
+}

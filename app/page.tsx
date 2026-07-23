@@ -20,6 +20,7 @@ import { ReportsView } from "@/components/views/reports-view"
 import { ProjectsView } from "@/components/views/projects-view"
 import { InboxView } from "@/components/views/inbox-view"
 import { SettingsView } from "@/components/views/settings-view"
+import { AdminView } from "@/components/views/admin-view"
 
 function MyTasksView() {
   const { userData, currentUser } = useApp()
@@ -125,6 +126,7 @@ export default function Page() {
         {activeView === "time-log" && <TimeLogView />}
         {activeView === "reports" && <ReportsView />}
         {activeView === "settings" && <SettingsView />}
+        {activeView === "admin" && <AdminView />}
       </main>
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onSelectTask={handleSelectTask} />
