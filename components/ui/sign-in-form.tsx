@@ -164,7 +164,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
               className="object-contain"
             />
           </div>
-          <h2 className="text-xl font-extrabold tracking-tight text-foreground">Octho</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Octho</h2>
         </div>
 
         {errorMsg && (
