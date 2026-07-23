@@ -147,7 +147,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
   }
 
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative w-full max-w-sm">
       {/* Ambient glowing backdrop ring */}
       <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-primary/30 via-indigo-500/20 to-cyan-500/30 opacity-75 blur-xl pointer-events-none" />
 

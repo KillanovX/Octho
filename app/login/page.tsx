@@ -19,7 +19,7 @@ export default function LoginPage() {
 
   return (
     <BeamsBackground intensity="strong">
-      <div className="relative z-10 w-full max-w-md flex flex-col items-center">
+      <div className="relative z-10 w-full max-w-sm flex flex-col items-center">
         <SignInForm onSuccess={() => {
           if (router) router.push("/")
         }} />
