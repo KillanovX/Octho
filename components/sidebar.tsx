@@ -14,7 +14,6 @@ import {
   ChevronDown,
   Zap,
   VerifiedIcon,
-  LogIn,
   LogOut,
   UserPlus,
 } from "lucide-react"
@@ -40,6 +39,11 @@ const workspace: NavDef[] = [
 export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
   const { activeView, setActiveView, currentUser, setCurrentUser, profilesList, unreadCount, openAuthModal, signOut } = useApp()
   const [showSwitcher, setShowSwitcher] = useState(false)
+
+  const userName = currentUser?.name || "Usuário"
+  const userEmail = currentUser?.email || ""
+  const userAvatar = currentUser?.avatar || "US"
+  const avatarColor = currentUser?.avatarColor || "#6366f1"
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 lg:flex">
@@ -101,61 +105,53 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
         {/* User Switcher Popover */}
         {showSwitcher && (
           <div className="absolute bottom-12 left-0 right-0 z-50 mb-2 rounded-lg border border-border bg-card p-2 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-150">
-            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Alternar Perfil
-            </p>
-            <div className="flex flex-col gap-1 max-h-56 overflow-y-auto">
-              {profilesList.map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => {
-                    setCurrentUser(u)
-                    setShowSwitcher(false)
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-sidebar-accent",
-                    currentUser.id === u.id && "bg-sidebar-accent font-medium"
-                  )}
-                >
-                  <div className="relative shrink-0">
-                    <Avatar className="size-6">
-                      {u.imageUrl && <AvatarImage src={u.imageUrl} alt={u.name} />}
-                      <AvatarFallback style={{ backgroundColor: u.avatarColor, color: "#fff" }} className="text-[10px] font-semibold">
-                        {u.avatar}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  <div className="min-w-0 flex-1 text-left">
-                    <p className="truncate font-medium text-foreground">{u.name}</p>
-                    <p className="truncate text-[10px] text-muted-foreground">{u.role || u.email}</p>
-                  </div>
-                </button>
-              ))}
+            {profilesList.length > 1 && (
+              <>
+                <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Seus Perfis
+                </p>
+                <div className="flex flex-col gap-1 max-h-56 overflow-y-auto">
+                  {profilesList.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => {
+                        setCurrentUser(u)
+                        setShowSwitcher(false)
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-sidebar-accent",
+                        currentUser.id === u.id && "bg-sidebar-accent font-medium"
+                      )}
+                    >
+                      <div className="relative shrink-0">
+                        <Avatar className="size-6">
+                          {u.imageUrl && <AvatarImage src={u.imageUrl} alt={u.name} />}
+                          <AvatarFallback style={{ backgroundColor: u.avatarColor, color: "#fff" }} className="text-[10px] font-semibold">
+                            {u.avatar}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="truncate font-medium text-foreground">{u.name}</p>
+                        <p className="truncate text-[10px] text-muted-foreground">{u.role || u.email}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="my-1 border-t border-border" />
+              </>
+            )}
 
-              <div className="my-1 border-t border-border" />
-
-              <button
-                onClick={() => {
-                  openAuthModal()
-                  setShowSwitcher(false)
-                }}
-                className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-primary transition-colors hover:bg-sidebar-accent"
-              >
-                <UserPlus className="size-3.5" />
-                <span>+ Criar ou entrar perfil</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  signOut()
-                  setShowSwitcher(false)
-                }}
-                className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-destructive transition-colors hover:bg-sidebar-accent"
-              >
-                <LogOut className="size-3.5" />
-                <span>Sair da conta</span>
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                signOut()
+                setShowSwitcher(false)
+              }}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-destructive transition-colors hover:bg-sidebar-accent"
+            >
+              <LogOut className="size-3.5" />
+              <span>Sair da conta</span>
+            </button>
           </div>
         )}
 
@@ -165,20 +161,20 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
         >
           <div className="relative shrink-0">
             <Avatar className="size-7">
-              {currentUser.imageUrl && <AvatarImage src={currentUser.imageUrl} alt={currentUser.name} />}
-              <AvatarFallback style={{ backgroundColor: currentUser.avatarColor, color: "#fff" }} className="text-xs font-semibold">
-                {currentUser.avatar}
+              {currentUser?.imageUrl && <AvatarImage src={currentUser.imageUrl} alt={userName} />}
+              <AvatarFallback style={{ backgroundColor: avatarColor, color: "#fff" }} className="text-xs font-semibold">
+                {userAvatar}
               </AvatarFallback>
             </Avatar>
-            {currentUser.verified && (
+            {currentUser?.verified && (
               <span className="absolute -right-0.5 -bottom-0.5 flex size-2.5 items-center justify-center rounded-full bg-sidebar">
                 <VerifiedIcon className="size-full fill-blue-500 text-white" />
               </span>
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-sidebar-foreground">{currentUser.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{currentUser.email}</p>
+            <p className="truncate text-sm font-medium text-sidebar-foreground">{userName}</p>
+            <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
           </div>
           <ChevronDown
             className="size-4 shrink-0 text-muted-foreground transition-transform duration-200"

@@ -23,13 +23,13 @@ const avatarColors = [
 export function AuthModal({ open, onClose }: AuthModalProps) {
   const { setCurrentUser, profilesList, addProfile } = useApp()
 
-  const [tab, setTab] = useState<"profiles" | "login" | "register">("profiles")
+  const [tab, setTab] = useState<"login" | "register">("login")
 
   // Form states
   const [name, setName] = useState("")
-  const [email, setEmail] = useState("flavio.adsv@gmail.com")
-  const [password, setPassword] = useState("12345")
-  const [role, setRole] = useState("Desenvolvedor")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [role, setRole] = useState("")
   const [selectedColor, setSelectedColor] = useState(avatarColors[0].hex)
 
   const [loading, setLoading] = useState(false)
@@ -207,30 +207,16 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           <button
             type="button"
             onClick={() => {
-              setTab("profiles")
-              setErrorMsg(null)
-            }}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-              tab === "profiles"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Escolher Perfil
-          </button>
-          <button
-            type="button"
-            onClick={() => {
               setTab("login")
               setErrorMsg(null)
             }}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+            className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors ${
               tab === "login"
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Login Supabase
+            Entrar
           </button>
           <button
             type="button"
@@ -238,13 +224,13 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
               setTab("register")
               setErrorMsg(null)
             }}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+            className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors ${
               tab === "register"
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Criar Perfil
+            Criar Conta
           </button>
         </div>
 
@@ -259,52 +245,6 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           <div className="mb-4 flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-500">
             <CheckCircle2 className="size-4 shrink-0" />
             <span>{successMsg}</span>
-          </div>
-        )}
-
-        {/* TAB 1: PERFIS RÁPIDOS */}
-        {tab === "profiles" && (
-          <div className="space-y-4">
-            <p className="text-xs font-medium text-muted-foreground mb-2">
-              Selecione o perfil de membro da equipe para entrar:
-            </p>
-            <div className="grid grid-cols-1 gap-2.5 max-h-64 overflow-y-auto pr-1">
-              {profilesList.map((profile) => (
-                <button
-                  key={profile.id}
-                  type="button"
-                  onClick={() => handleQuickSelectProfile(profile)}
-                  className="group flex items-center justify-between rounded-xl border border-border bg-background p-3 text-left transition-all hover:border-primary/50 hover:bg-accent/40 shadow-sm"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar className="size-10 shrink-0 border border-border">
-                      {profile.imageUrl && <AvatarImage src={profile.imageUrl} alt={profile.name} />}
-                      <AvatarFallback style={{ backgroundColor: profile.avatarColor, color: "#fff" }} className="text-xs font-bold">
-                        {profile.avatar}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm text-foreground truncate group-hover:text-primary transition-colors">
-                        {profile.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">{profile.role || profile.email}</p>
-                    </div>
-                  </div>
-                  <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                    Entrar →
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setTab("register")}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border p-3 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors mt-2"
-            >
-              <UserPlus className="size-4" />
-              <span>+ Cadastrar novo membro no time</span>
-            </button>
           </div>
         )}
 

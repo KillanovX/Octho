@@ -4,10 +4,6 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import {
   Task,
   ActivityEvent,
-  tasks as sampleTasks,
-  weeklyHours as sampleWeeklyHours,
-  activityBreakdown as sampleActivityBreakdown,
-  activityFeed as sampleActivityFeed,
   type ColumnId,
   type Label,
   type Priority,
@@ -27,48 +23,7 @@ export type UserProfile = {
   verified?: boolean
 }
 
-export const users: UserProfile[] = [
-  {
-    id: "FA",
-    name: "Flavio Alves",
-    email: "flavio.adsv@gmail.com",
-    avatar: "FA",
-    avatarColor: "#6366f1",
-    role: "Tech Lead",
-    imageUrl: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
-    verified: true,
-  },
-  {
-    id: "MA",
-    name: "Marina Alves",
-    email: "flavio.adsv@gmail.com",
-    avatar: "MA",
-    avatarColor: "#10b981",
-    role: "Product Owner",
-    imageUrl: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
-    verified: true,
-  },
-  {
-    id: "JS",
-    name: "João Silva",
-    email: "joao@octho.app",
-    avatar: "JS",
-    avatarColor: "#3b82f6",
-    role: "Frontend Engineer",
-    imageUrl: "https://images.shadcnspace.com/assets/profiles/user-2.jpg",
-    verified: false,
-  },
-  {
-    id: "RP",
-    name: "Rafaela Pires",
-    email: "rafaela@octho.app",
-    avatar: "RP",
-    avatarColor: "#f59e0b",
-    role: "UI/UX Designer",
-    imageUrl: "https://images.shadcnspace.com/assets/profiles/user-4.jpg",
-    verified: false,
-  },
-]
+export const users: UserProfile[] = []
 
 // ─── Views ──────────────────────────────────────────────────
 export type ViewId = "dashboard" | "inbox" | "my-tasks" | "kanban" | "projects" | "time-log" | "reports" | "settings" | "login"
@@ -134,7 +89,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined)
 let codeCounter = 300
 function nextCode(): string {
   codeCounter++
-  return `FLX-${codeCounter}`
+  return `OCT-${codeCounter}`
 }
 
 // ─── Helper: time-ago formatter ─────────────────────────────
@@ -154,24 +109,7 @@ export function getGreeting(): string {
   return "Boa noite"
 }
 
-// ─── Initial Data ───────────────────────────────────────────
-function buildMarinaData(): UserData {
-  return {
-    tasks: [],
-    weeklyHours: [
-      { day: "Seg", hours: 0, goal: 8 },
-      { day: "Ter", hours: 0, goal: 8 },
-      { day: "Qua", hours: 0, goal: 8 },
-      { day: "Qui", hours: 0, goal: 8 },
-      { day: "Sex", hours: 0, goal: 8 },
-      { day: "Sáb", hours: 0, goal: 4 },
-      { day: "Dom", hours: 0, goal: 0 },
-    ],
-    activityBreakdown: [],
-    activityFeed: [],
-  }
-}
-
+// ─── Initial Clean Data ──────────────────────────────────────
 function buildDefaultUserData(): UserData {
   return {
     tasks: [],
@@ -191,7 +129,7 @@ function buildDefaultUserData(): UserData {
 
 // ─── Supabase Sync ──────────────────────────────────────────
 async function loadTasksFromSupabase(profileId: string): Promise<Task[] | null> {
-  if (!isSupabaseConfigured() || !supabase) return null
+  if (!isSupabaseConfigured() || !supabase || !profileId) return null
   try {
     const { data, error } = await supabase
       .from("tasks")
@@ -202,7 +140,7 @@ async function loadTasksFromSupabase(profileId: string): Promise<Task[] | null> 
       console.error("Supabase load tasks error:", error)
       return null
     }
-    if (!data || data.length === 0) return null
+    if (!data) return null
     return data.map((row: Record<string, unknown>) => ({
       id: row.id as string,
       code: row.code as string,
@@ -221,7 +159,7 @@ async function loadTasksFromSupabase(profileId: string): Promise<Task[] | null> 
 }
 
 async function saveTaskToSupabase(profileId: string, task: Task) {
-  if (!isSupabaseConfigured() || !supabase) return
+  if (!isSupabaseConfigured() || !supabase || !profileId) return
   try {
     await supabase.from("tasks").upsert({
       id: task.id,
@@ -252,7 +190,7 @@ async function deleteTaskFromSupabase(taskId: string) {
 }
 
 async function saveActivityToSupabase(profileId: string, event: ActivityEvent & { createdAt: number }) {
-  if (!isSupabaseConfigured() || !supabase) return
+  if (!isSupabaseConfigured() || !supabase || !profileId) return
   try {
     await supabase.from("activity_events").insert({
       id: event.id,
@@ -270,7 +208,7 @@ async function saveActivityToSupabase(profileId: string, event: ActivityEvent & 
 }
 
 async function loadEventsFromSupabase(profileId: string): Promise<(ActivityEvent & { createdAt: number })[] | null> {
-  if (!isSupabaseConfigured() || !supabase) return null
+  if (!isSupabaseConfigured() || !supabase || !profileId) return null
   try {
     const { data, error } = await supabase
       .from("activity_events")
@@ -282,7 +220,7 @@ async function loadEventsFromSupabase(profileId: string): Promise<(ActivityEvent
       console.error("Supabase load events error:", error)
       return null
     }
-    if (!data || data.length === 0) return null
+    if (!data) return null
     return data.map((row: Record<string, unknown>) => ({
       id: row.id as string,
       user: row.user_initials as string,
@@ -299,34 +237,19 @@ async function loadEventsFromSupabase(profileId: string): Promise<(ActivityEvent
 
 // ─── Provider ───────────────────────────────────────────────
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUserVal] = useState<UserProfile>(users[0])
-  const [profilesList, setProfilesList] = useState<UserProfile[]>(users)
-  const [activeView, setActiveView] = useState<ViewId>("dashboard")
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(true)
-
-  const login = useCallback((user: UserProfile) => {
-    setCurrentUserVal(user)
-    setIsAuthenticated(true)
-    setActiveView("dashboard")
-    setIsAuthModalOpen(false)
-  }, [])
-
-  const addProfile = useCallback((newProfile: UserProfile) => {
-    setProfilesList((prev) => {
-      if (prev.some((p) => p.id === newProfile.id || p.email === newProfile.email)) return prev
-      return [...prev, newProfile]
-    })
-    setUsersStore((prev) => ({
-      ...prev,
-      [newProfile.id]: buildDefaultUserData(),
-    }))
-  }, [])
-
-  const [usersStore, setUsersStore] = useState<Record<string, UserData>>({
-    MA: buildMarinaData(),
-    FA: buildDefaultUserData(),
+  const [currentUser, setCurrentUserVal] = useState<UserProfile>({
+    id: "",
+    name: "",
+    email: "",
+    avatar: "",
+    avatarColor: "#6366f1",
   })
+  const [profilesList, setProfilesList] = useState<UserProfile[]>([])
+  const [activeView, setActiveView] = useState<ViewId>("login")
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  const [usersStore, setUsersStore] = useState<Record<string, UserData>>({})
 
   const [timer, setTimer] = useState<TimerState>({
     taskId: null,
@@ -335,73 +258,128 @@ export function AppProvider({ children }: { children: ReactNode }) {
     running: false,
   })
 
-  const [lastReadTimestamp, setLastReadTimestamp] = useState<Record<string, number>>({
-    MA: Date.now(),
-    FA: Date.now(),
-  })
-
+  const [lastReadTimestamp, setLastReadTimestamp] = useState<Record<string, number>>({})
   const [supabaseLoaded, setSupabaseLoaded] = useState<Record<string, boolean>>({})
 
-  // ── Listen to Supabase Auth State ──
+  // ── Restore Login Session & Persistence ──
   useEffect(() => {
-    if (!supabase) return
+    try {
+      const savedUserStr = localStorage.getItem("octho_user")
+      if (savedUserStr) {
+        const savedUser = JSON.parse(savedUserStr)
+        if (savedUser && savedUser.id) {
+          setCurrentUserVal(savedUser)
+          setProfilesList((prev) => (prev.some((p) => p.id === savedUser.id) ? prev : [...prev, savedUser]))
+          setIsAuthenticated(true)
+          setActiveView("dashboard")
 
-    // Get current active session on boot
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const u = session.user
-        const profile = await getUserProfile(u.id)
-        const name = profile?.name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário"
-        const avatar = (profile?.avatar || u.user_metadata?.avatar || name.slice(0, 2)).toUpperCase()
-        setCurrentUserVal({
-          id: u.id,
-          name,
-          email: u.email || "",
-          avatar,
-          avatarColor: profile?.avatar_color || "#6366f1",
-          verified: true,
-        })
+          const savedDataStr = localStorage.getItem(`octho_data_${savedUser.id}`)
+          if (savedDataStr) {
+            const savedData = JSON.parse(savedDataStr)
+            setUsersStore((prev) => ({ ...prev, [savedUser.id]: savedData }))
+          }
+        }
       }
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const u = session.user
-        const profile = await getUserProfile(u.id)
-        const name = profile?.name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário"
-        const avatar = (profile?.avatar || u.user_metadata?.avatar || name.slice(0, 2)).toUpperCase()
-        setCurrentUserVal({
-          id: u.id,
-          name,
-          email: u.email || "",
-          avatar,
-          avatarColor: profile?.avatar_color || "#6366f1",
-          verified: true,
-        })
-      }
-    })
-
-    return () => {
-      subscription.unsubscribe()
+    } catch (e) {
+      console.error("Error restoring session:", e)
     }
+
+    if (supabase) {
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
+        if (session?.user) {
+          const u = session.user
+          const profile = await getUserProfile(u.id)
+          const name = profile?.name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário"
+          const avatar = (profile?.avatar || u.user_metadata?.avatar || name.slice(0, 2)).toUpperCase()
+          const userObj: UserProfile = {
+            id: u.id,
+            name,
+            email: u.email || "",
+            avatar,
+            avatarColor: profile?.avatar_color || "#6366f1",
+            verified: true,
+          }
+          setCurrentUserVal(userObj)
+          setProfilesList((prev) => (prev.some((p) => p.id === userObj.id) ? prev : [...prev, userObj]))
+          setIsAuthenticated(true)
+          setActiveView("dashboard")
+          try {
+            localStorage.setItem("octho_user", JSON.stringify(userObj))
+          } catch {}
+        }
+      })
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          const u = session.user
+          const profile = await getUserProfile(u.id)
+          const name = profile?.name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário"
+          const avatar = (profile?.avatar || u.user_metadata?.avatar || name.slice(0, 2)).toUpperCase()
+          const userObj: UserProfile = {
+            id: u.id,
+            name,
+            email: u.email || "",
+            avatar,
+            avatarColor: profile?.avatar_color || "#6366f1",
+            verified: true,
+          }
+          setCurrentUserVal(userObj)
+          setProfilesList((prev) => (prev.some((p) => p.id === userObj.id) ? prev : [...prev, userObj]))
+          setIsAuthenticated(true)
+          setActiveView("dashboard")
+          try {
+            localStorage.setItem("octho_user", JSON.stringify(userObj))
+          } catch {}
+        }
+      })
+
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+  }, [])
+
+  const login = useCallback((user: UserProfile) => {
+    setCurrentUserVal(user)
+    setIsAuthenticated(true)
+    setActiveView("dashboard")
+    setIsAuthModalOpen(false)
+    setProfilesList((prev) => (prev.some((p) => p.id === user.id) ? prev : [...prev, user]))
+    try {
+      localStorage.setItem("octho_user", JSON.stringify(user))
+    } catch {}
+  }, [])
+
+  const addProfile = useCallback((newProfile: UserProfile) => {
+    setProfilesList((prev) => {
+      if (prev.some((p) => p.id === newProfile.id || p.email === newProfile.email)) return prev
+      return [...prev, newProfile]
+    })
   }, [])
 
   // ── Load from Supabase on user switch ──
   useEffect(() => {
     const pid = currentUser.id
-    if (supabaseLoaded[pid]) return
+    if (!pid || supabaseLoaded[pid]) return
     const load = async () => {
       const tasks = await loadTasksFromSupabase(pid)
       const events = await loadEventsFromSupabase(pid)
       if (tasks !== null || events !== null) {
-        setUsersStore((prev) => ({
-          ...prev,
-          [pid]: {
-            ...prev[pid] || buildDefaultUserData(),
+        setUsersStore((prev) => {
+          const existing = prev[pid] || buildDefaultUserData()
+          const updated = {
+            ...existing,
             ...(tasks !== null ? { tasks } : {}),
             ...(events !== null ? { activityFeed: events } : {}),
-          },
-        }))
+          }
+          try {
+            localStorage.setItem(`octho_data_${pid}`, JSON.stringify(updated))
+          } catch {}
+          return {
+            ...prev,
+            [pid]: updated,
+          }
+        })
       }
       setSupabaseLoaded((prev) => ({ ...prev, [pid]: true }))
     }
@@ -415,17 +393,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval)
   }, [timer.running])
 
-  // ── Derived state ──
-  const rawUserData = usersStore[currentUser.id] || buildDefaultUserData()
-
-  // Um perfil específico deve ver apenas suas próprias atividades e tarefas no Kanban
-  const filteredTasks = rawUserData.tasks.filter((t) => t.assignee === currentUser.avatar)
-  const filteredActivityFeed = rawUserData.activityFeed.filter((e) => e.user === currentUser.avatar)
+  // ── Derived state for CURRENT USER ONLY ──
+  const rawUserData = (currentUser.id ? usersStore[currentUser.id] : null) || buildDefaultUserData()
 
   const userData = {
     ...rawUserData,
-    tasks: filteredTasks,
-    activityFeed: filteredActivityFeed,
+    tasks: rawUserData.tasks,
+    activityFeed: rawUserData.activityFeed,
   }
 
   const hoursMonth = userData.tasks.reduce((acc, t) => acc + t.hoursLogged, 0)
@@ -441,6 +415,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleSignOut = useCallback(async () => {
     await signOutSupabase()
+    try {
+      localStorage.removeItem("octho_user")
+    } catch {}
+    setCurrentUserVal({ id: "", name: "", email: "", avatar: "", avatarColor: "#6366f1" })
     setIsAuthenticated(false)
     setActiveView("login")
     setIsAuthModalOpen(false)
@@ -449,20 +427,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Mutations ──
   const mutateData = useCallback(
     (updater: (prev: UserData) => UserData) => {
-      setUsersStore((prev) => ({
-        ...prev,
-        [currentUser.id]: updater(prev[currentUser.id] || buildDefaultUserData()),
-      }))
+      if (!currentUser.id) return
+      setUsersStore((prev) => {
+        const current = prev[currentUser.id] || buildDefaultUserData()
+        const updated = updater(current)
+        try {
+          localStorage.setItem(`octho_data_${currentUser.id}`, JSON.stringify(updated))
+        } catch {}
+        return {
+          ...prev,
+          [currentUser.id]: updated,
+        }
+      })
     },
     [currentUser.id]
   )
 
   const logActivity = useCallback(
     (action: string, target: string) => {
+      if (!currentUser.id) return
       const event: ActivityEvent & { createdAt: number } = {
         id: crypto.randomUUID(),
-        user: currentUser.avatar,
-        userColor: currentUser.avatarColor,
+        user: currentUser.avatar || "EU",
+        userColor: currentUser.avatarColor || "#6366f1",
         action,
         target,
         time: "agora mesmo",
@@ -479,6 +466,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addTask = useCallback(
     (taskData: Omit<Task, "id" | "code">) => {
+      if (!currentUser.id) return
       const task: Task = { ...taskData, id: crypto.randomUUID(), code: nextCode() }
       mutateData((prev) => ({ ...prev, tasks: [...prev.tasks, task] }))
       logActivity("criou", `${task.code} — ${task.title}`)
@@ -489,6 +477,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateTask = useCallback(
     (id: string, updates: Partial<Task>) => {
+      if (!currentUser.id) return
       mutateData((prev) => ({
         ...prev,
         tasks: prev.tasks.map((t) => {
@@ -507,6 +496,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deleteTask = useCallback(
     (id: string) => {
+      if (!currentUser.id) return
       const task = userData.tasks.find((t) => t.id === id)
       mutateData((prev) => ({ ...prev, tasks: prev.tasks.filter((t) => t.id !== id) }))
       if (task) {
@@ -514,11 +504,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteTaskFromSupabase(id)
       }
     },
-    [mutateData, logActivity, userData.tasks]
+    [currentUser.id, mutateData, logActivity, userData.tasks]
   )
 
   const moveTask = useCallback(
     (id: string, column: ColumnId, overTaskId?: string) => {
+      if (!currentUser.id) return
       const task = userData.tasks.find((t) => t.id === id)
       if (!task) return
       const colName = columns.find((c) => c.id === column)?.name ?? column
@@ -576,7 +567,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logTimerHours = useCallback(() => {
-    if (!timer.taskId || timer.seconds < 60) return
+    if (!timer.taskId || timer.seconds < 60 || !currentUser.id) return
     const hours = Math.round((timer.seconds / 3600) * 100) / 100
     const task = userData.tasks.find((t) => t.id === timer.taskId)
     if (task) {
@@ -593,6 +584,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ── Notifications ──
   const markAllRead = useCallback(() => {
+    if (!currentUser.id) return
     setLastReadTimestamp((prev) => ({ ...prev, [currentUser.id]: Date.now() }))
   }, [currentUser.id])
 

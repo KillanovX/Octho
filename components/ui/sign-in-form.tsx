@@ -17,10 +17,10 @@ interface SignInFormProps {
 }
 
 export default function SignInForm({ onSuccess, initialMode = "signin" }: SignInFormProps) {
-  const { setCurrentUser, profilesList, addProfile, login } = useApp()
+  const { addProfile, login } = useApp()
   const [isSignUp, setIsSignUp] = useState(initialMode === "signup")
-  const [email, setEmail] = useState("flavio.adsv@gmail.com")
-  const [password, setPassword] = useState("12345")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -34,10 +34,16 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
     setSuccessMsg(null)
     setLoading(true)
 
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg("Por favor, preencha o e-mail e a senha.")
+      setLoading(false)
+      return
+    }
+
     try {
       if (isSignUp) {
         if (!name.trim()) {
-          setErrorMsg("Por favor, informe seu nome.")
+          setErrorMsg("Por favor, informe seu nome completo.")
           setLoading(false)
           return
         }
@@ -50,74 +56,70 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           .slice(0, 2)
 
         if (!isConfigured) {
-          const newProfile: UserProfile = {
+          const userProfile: UserProfile = {
             id: `usr_${Date.now()}`,
             name: name.trim(),
-            email: email.trim() || `${initials.toLowerCase()}@octho.app`,
-            avatar: initials,
+            email: email.trim().toLowerCase(),
+            avatar: initials || "US",
             avatarColor: "#6366f1",
-            role: "Membro do Time",
+            role: "Usuário",
             verified: true,
           }
-          addProfile(newProfile)
-          login(newProfile)
-          setSuccessMsg("Perfil criado e logado com sucesso!")
-          if (onSuccess) setTimeout(onSuccess, 600)
+          addProfile(userProfile)
+          login(userProfile)
+          setSuccessMsg("Conta criada com sucesso!")
+          if (onSuccess) setTimeout(onSuccess, 500)
           return
         }
 
         const { data, error } = await signUpWithSupabase(email, password, name.trim())
         if (error) {
-          setErrorMsg(error.message || "Erro ao criar conta.")
+          setErrorMsg(error.message || "Erro ao registrar conta.")
         } else if (data?.user) {
           const user = data.user
-          const newProfile: UserProfile = {
+          const userProfile: UserProfile = {
             id: user.id,
             name: name.trim(),
             email: user.email || email.trim(),
-            avatar: initials,
+            avatar: initials || "US",
             avatarColor: "#6366f1",
             verified: true,
           }
-          addProfile(newProfile)
-          login(newProfile)
-          setSuccessMsg("Conta criada com sucesso!")
-          if (onSuccess) setTimeout(onSuccess, 600)
+          addProfile(userProfile)
+          login(userProfile)
+          setSuccessMsg("Conta registrada com sucesso!")
+          if (onSuccess) setTimeout(onSuccess, 500)
         }
       } else {
         // Sign in
         if (!isConfigured) {
-          const existing = profilesList.find((p) => p.email.toLowerCase() === email.toLowerCase())
-          if (existing) {
-            login(existing)
-            setSuccessMsg(`Bem-vindo de volta, ${existing.name}!`)
-          } else {
-            const initials = (email.split("@")[0] || "US").slice(0, 2).toUpperCase()
-            const demoUser: UserProfile = {
-              id: email,
-              name: email.split("@")[0],
-              email,
-              avatar: initials,
-              avatarColor: "#6366f1",
-              verified: true,
-            }
-            addProfile(demoUser)
-            login(demoUser)
-            setSuccessMsg(`Login efetuado!`)
+          const namePart = email.split("@")[0] || "Usuário"
+          const initials = namePart.slice(0, 2).toUpperCase()
+          const userProfile: UserProfile = {
+            id: email.trim().toLowerCase(),
+            name: namePart.charAt(0).toUpperCase() + namePart.slice(1),
+            email: email.trim().toLowerCase(),
+            avatar: initials,
+            avatarColor: "#6366f1",
+            verified: true,
           }
-          if (onSuccess) setTimeout(onSuccess, 600)
+          addProfile(userProfile)
+          login(userProfile)
+          setSuccessMsg(`Bem-vindo, ${userProfile.name}!`)
+          if (onSuccess) setTimeout(onSuccess, 500)
           return
         }
 
         const { data, error } = await signInWithSupabase(email, password)
         if (error) {
-          setErrorMsg(error.message || "Email ou senha incorretos.")
+          setErrorMsg(error.message || "E-mail ou senha incorretos.")
         } else if (data?.user) {
           const user = data.user
-          const avatar = (user.user_metadata?.avatar || email.slice(0, 2)).toUpperCase()
+          const nameFromMeta = user.user_metadata?.name || email.split("@")[0]
+          const avatar = (user.user_metadata?.avatar || nameFromMeta.slice(0, 2)).toUpperCase()
           const userProfile: UserProfile = {
             id: user.id,
-            name: user.user_metadata?.name || email.split("@")[0],
+            name: nameFromMeta,
             email: user.email || email,
             avatar,
             avatarColor: "#6366f1",
@@ -126,20 +128,18 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           addProfile(userProfile)
           login(userProfile)
           setSuccessMsg("Login realizado com sucesso!")
-          if (onSuccess) setTimeout(onSuccess, 600)
+          if (onSuccess) setTimeout(onSuccess, 500)
         }
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Ocorreu um erro no login.")
+      setErrorMsg(err.message || "Ocorreu um erro ao autenticar.")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleQuickProfileSelect = (p: UserProfile) => {
-    login(p)
-    setSuccessMsg(`Logado como ${p.name}!`)
-    if (onSuccess) setTimeout(onSuccess, 500)
+  const handleSocialClick = (provider: string) => {
+    setErrorMsg(`Login social via ${provider} ativado para o ambiente. Use e-mail e senha para prosseguir.`)
   }
 
   return (
@@ -184,6 +184,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
                   id="name"
                   type="text"
                   placeholder="Seu nome"
+                  required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="border-0 shadow-none focus-visible:ring-0"
@@ -200,7 +201,8 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder="seu@email.com"
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="border-0 shadow-none focus-visible:ring-0"
@@ -216,7 +218,9 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="••••••••"
+                required
+                minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="border-0 shadow-none focus-visible:ring-0"
@@ -230,15 +234,15 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
               <div className="flex items-center space-x-2">
                 <Checkbox id="remember" defaultChecked />
                 <Label htmlFor="remember" className="text-sm font-normal">
-                  Remember me
+                  Lembrar-me
                 </Label>
               </div>
               <button
                 type="button"
                 className="text-sm text-primary hover:underline"
-                onClick={() => setErrorMsg("Um link de redefinição de senha foi simulado para seu email.")}
+                onClick={() => setErrorMsg("Informe seu e-mail para receber as instruções de recuperação.")}
               >
-                Forgot password?
+                Esqueceu a senha?
               </button>
             </div>
           )}
@@ -249,37 +253,12 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           </Button>
         </form>
 
-        {/* Quick Profile Selection */}
-        <div className="flex flex-col gap-2 pt-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">
-            Ou escolha um perfil ativo
-          </p>
-          <div className="flex items-center justify-center gap-2 flex-wrap">
-            {profilesList.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handleQuickProfileSelect(p)}
-                className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
-              >
-                <span
-                  className="flex size-5 items-center justify-center rounded-full text-[10px] text-white font-bold"
-                  style={{ backgroundColor: p.avatarColor }}
-                >
-                  {p.avatar}
-                </span>
-                <span>{p.name.split(" ")[0]}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Social login buttons */}
         <div className="flex flex-col gap-3 mt-1">
           <Button
             type="button"
             variant="outline"
-            onClick={() => handleQuickProfileSelect(profilesList[0])}
+            onClick={() => handleSocialClick("Google")}
             className="w-full h-12 rounded-lg flex items-center justify-center gap-3"
           >
             <Image
@@ -294,7 +273,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           <Button
             type="button"
             variant="outline"
-            onClick={() => handleQuickProfileSelect(profilesList[1] || profilesList[0])}
+            onClick={() => handleSocialClick("Apple")}
             className="w-full h-12 rounded-lg flex items-center justify-center gap-3"
           >
             <Image
@@ -310,7 +289,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           <Button
             type="button"
             variant="outline"
-            onClick={() => handleQuickProfileSelect(profilesList[0])}
+            onClick={() => handleSocialClick("GitHub")}
             className="w-full h-12 rounded-lg flex items-center justify-center gap-3"
           >
             <Image
@@ -325,7 +304,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
 
         {/* Signup / Signin Toggle */}
         <p className="text-center text-sm text-muted-foreground mt-2">
-          {isSignUp ? "Já possui uma conta?" : "Don’t have an account?"}{" "}
+          {isSignUp ? "Já possui uma conta?" : "Não tem uma conta?"}{" "}
           <span
             onClick={() => {
               setIsSignUp(!isSignUp)
