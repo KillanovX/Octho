@@ -124,22 +124,10 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           if (onSuccess) setTimeout(onSuccess, 500)
         }
       } else {
-        // 1. Check local authentication first (for instant reset password support)
-        const localRes = authenticateLocalUser(email, password)
-        if (localRes.user) {
-          addProfile(localRes.user)
-          login(localRes.user)
-          setSuccessMsg(`Bem-vindo de volta, ${localRes.user.name}!`)
-          if (onSuccess) setTimeout(onSuccess, 500)
-          return
-        }
-
-        // 2. Fallback to Supabase authentication if not found locally
+        // 1. If Supabase is configured, authenticate directly with Supabase Auth first
         if (isConfigured) {
           const { data, error } = await signInWithSupabase(email, password)
-          if (error) {
-            setErrorMsg(error.message || "E-mail ou senha incorretos.")
-          } else if (data?.user) {
+          if (!error && data?.user) {
             const user = data.user
             const nameFromMeta = user.user_metadata?.name || email.split("@")[0]
             const avatar = (user.user_metadata?.avatar || nameFromMeta.slice(0, 2)).toUpperCase()
@@ -155,7 +143,17 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
             login(userProfile)
             setSuccessMsg("Login realizado com sucesso!")
             if (onSuccess) setTimeout(onSuccess, 500)
+            return
           }
+        }
+
+        // 2. Fallback to local authentication if not found in Supabase Auth
+        const localRes = authenticateLocalUser(email, password)
+        if (localRes.user) {
+          addProfile(localRes.user)
+          login(localRes.user)
+          setSuccessMsg(`Bem-vindo de volta, ${localRes.user.name}!`)
+          if (onSuccess) setTimeout(onSuccess, 500)
           return
         }
 

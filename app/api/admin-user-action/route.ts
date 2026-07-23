@@ -91,11 +91,13 @@ export async function POST(req: Request) {
       }
 
       if (adminSupabase) {
-        const { data: usersData } = await adminSupabase.auth.admin.listUsers()
+        const { data: usersData } = await adminSupabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
         if (usersData?.users) {
           const found = usersData.users.find((u) => u.email?.toLowerCase() === normalizedEmail)
           if (found) {
-            await adminSupabase.auth.admin.updateUserById(found.id, { password })
+            await adminSupabase.auth.admin.updateUserById(found.id, { password, email_confirm: true })
+          } else {
+            await adminSupabase.auth.admin.createUser({ email: normalizedEmail, password, email_confirm: true })
           }
         }
       }
