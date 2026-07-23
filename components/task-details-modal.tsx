@@ -395,16 +395,35 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
             {activeTab === "comments" && (
               <div className="space-y-4">
                 {/* Add Comment Form */}
-                <form onSubmit={handleAddComment} className="flex gap-2">
-                  <textarea
-                    placeholder="Escreva uma observação ou anotação sobre esta tarefa..."
-                    value={newCommentText}
-                    onChange={(e) => setNewCommentText(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring min-h-[80px]"
-                  />
-                  <Button type="submit" size="icon" className="size-11 rounded-xl shrink-0 self-end">
-                    <Send className="size-4" />
-                  </Button>
+                <form onSubmit={handleAddComment}>
+                  <div className="relative rounded-xl border border-border bg-background focus-within:ring-2 focus-within:ring-ring transition-shadow">
+                    <textarea
+                      placeholder="Escreva uma observação ou anotação sobre esta tarefa..."
+                      value={newCommentText}
+                      onChange={(e) => setNewCommentText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                          e.preventDefault()
+                          handleAddComment(e as any)
+                        }
+                      }}
+                      className="w-full bg-transparent px-4 pt-3 pb-12 text-sm text-foreground outline-none placeholder:text-muted-foreground min-h-[100px] resize-none rounded-xl"
+                    />
+                    <div className="absolute bottom-2.5 right-2.5 flex items-center gap-2">
+                      <span className="hidden text-[10px] text-muted-foreground/60 sm:inline select-none">
+                        Ctrl+↵ para enviar
+                      </span>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={!newCommentText.trim()}
+                        className="h-8 rounded-lg px-3 gap-1.5 text-xs font-semibold disabled:opacity-40"
+                      >
+                        <Send className="size-3.5" />
+                        Enviar
+                      </Button>
+                    </div>
+                  </div>
                 </form>
 
                 {/* Comments List */}
