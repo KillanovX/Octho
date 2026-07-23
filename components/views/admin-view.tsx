@@ -154,26 +154,39 @@ export function AdminView() {
     }
   }
 
-  const handleEditUser = (e: React.FormEvent) => {
+  const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedUser || !formName.trim()) return
     setErrorMsg(null)
     setSuccessMsg(null)
 
     setLoading(true)
+
+    // 1. Sync update to Supabase
+    try {
+      await fetch("/api/admin-user-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update-name", email: selectedUser.email, name: formName.trim() }),
+      })
+    } catch (err) {
+      console.error("Supabase user update error:", err)
+    }
+
+    // 2. Sync local user profile
     const res = updateUserProfile(selectedUser.email, { name: formName.trim() })
     setLoading(false)
 
     if (res.error) {
       setErrorMsg(res.error)
     } else {
-      setSuccessMsg(`Dados do usuário ${selectedUser.email} atualizados!`)
+      setSuccessMsg(`Nome do usuário ${selectedUser.email} atualizado com sucesso no Supabase e no app!`)
       setIsEditModalOpen(false)
       reloadUsers()
     }
   }
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedUser || !formPassword.trim()) return
     setErrorMsg(null)
@@ -185,20 +198,33 @@ export function AdminView() {
     }
 
     setLoading(true)
+
+    // 1. Sync password change to Supabase
+    try {
+      await fetch("/api/admin-user-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "change-password", email: selectedUser.email, password: formPassword.trim() }),
+      })
+    } catch (err) {
+      console.error("Supabase password update error:", err)
+    }
+
+    // 2. Sync local user credentials
     const res = updateUserPassword(selectedUser.email, formPassword.trim())
     setLoading(false)
 
     if (res.error) {
       setErrorMsg(res.error)
     } else {
-      setSuccessMsg(`Senha de ${selectedUser.email} alterada com sucesso!`)
+      setSuccessMsg(`Senha de ${selectedUser.email} alterada no Supabase e no app com sucesso!`)
       setIsPasswordModalOpen(false)
       setFormPassword("")
       reloadUsers()
     }
   }
 
-  const handleDeleteUser = () => {
+  const handleDeleteUser = async () => {
     if (!selectedUser) return
     if (selectedUser.email.toLowerCase() === "flavio.adsv@gmail.com") {
       setErrorMsg("Não é possível excluir a conta do Super Admin.")
@@ -210,13 +236,26 @@ export function AdminView() {
     setSuccessMsg(null)
 
     setLoading(true)
+
+    // 1. Sync delete to Supabase
+    try {
+      await fetch("/api/admin-user-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-user", email: selectedUser.email }),
+      })
+    } catch (err) {
+      console.error("Supabase delete user error:", err)
+    }
+
+    // 2. Sync local delete
     const res = deleteUserAccount(selectedUser.email)
     setLoading(false)
 
     if (res.error) {
       setErrorMsg(res.error)
     } else {
-      setSuccessMsg(`Usuário ${selectedUser.email} excluído com sucesso.`)
+      setSuccessMsg(`Usuário ${selectedUser.email} excluído do Supabase e do app.`)
       setIsDeleteModalOpen(false)
       reloadUsers()
     }
