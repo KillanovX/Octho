@@ -5,6 +5,7 @@ import { X, Lock, Mail, User, LogIn, UserPlus, Zap, AlertCircle, CheckCircle2, S
 import { signInWithSupabase, signUpWithSupabase, isSupabaseConfigured } from "@/lib/supabase"
 import { useApp, type UserProfile } from "@/lib/context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { authenticateLocalUser, registerUserAccount } from "@/lib/auth-service"
 
 interface AuthModalProps {
   open: boolean
@@ -55,34 +56,32 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
     setSuccessMsg(null)
     setLoading(true)
 
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg("Por favor, preencha o e-mail e a senha.")
+      setLoading(false)
+      return
+    }
+
     try {
       if (!isConfigured) {
-        // Fallback local demo profile login
-        const existing = profilesList.find((p) => p.email.toLowerCase() === email.toLowerCase())
-        if (existing) {
-          setCurrentUser(existing)
-          setSuccessMsg(`Login efetuado como ${existing.name}!`)
-        } else {
-          const initials = email.slice(0, 2).toUpperCase()
-          const demoUser: UserProfile = {
-            id: email,
-            name: email.split("@")[0],
-            email,
-            avatar: initials,
-            avatarColor: selectedColor,
-            verified: true,
-          }
-          addProfile(demoUser)
-          setCurrentUser(demoUser)
-          setSuccessMsg(`Login no modo demo realizado!`)
+        const { user, error } = authenticateLocalUser(email, password)
+        if (error) {
+          setErrorMsg(error)
+          setLoading(false)
+          return
         }
-        setTimeout(() => onClose(), 800)
+        if (user) {
+          addProfile(user)
+          setCurrentUser(user)
+          setSuccessMsg(`Bem-vindo de volta, ${user.name}!`)
+          setTimeout(() => onClose(), 800)
+        }
         return
       }
 
       const { data, error } = await signInWithSupabase(email, password)
       if (error) {
-        setErrorMsg(error.message || "Email ou senha incorretos.")
+        setErrorMsg(error.message || "E-mail ou senha incorretos.")
       } else if (data?.user) {
         const user = data.user
         const avatar = (user.user_metadata?.avatar || email.slice(0, 2)).toUpperCase()
@@ -112,8 +111,14 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
     setSuccessMsg(null)
     setLoading(true)
 
-    if (!name.trim()) {
-      setErrorMsg("Por favor, informe seu nome completo.")
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setErrorMsg("Por favor, preencha todos os campos obrigatórios.")
+      setLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setErrorMsg("A senha deve ter no mínimo 6 caracteres.")
       setLoading(false)
       return
     }
@@ -124,24 +129,22 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       .map((p) => p[0])
       .join("")
       .toUpperCase()
-      .slice(0, 2)
+      .slice(0, 2) || "US"
 
     try {
       if (!isConfigured) {
-        // Fallback local demo registration
-        const newProfile: UserProfile = {
-          id: `usr_${Date.now()}`,
-          name: name.trim(),
-          email: email.trim() || `${initials.toLowerCase()}@octho.app`,
-          avatar: initials,
-          avatarColor: selectedColor,
-          role: role.trim() || "Membro do Time",
-          verified: true,
+        const { user, error } = registerUserAccount(name, email, password)
+        if (error) {
+          setErrorMsg(error)
+          setLoading(false)
+          return
         }
-        addProfile(newProfile)
-        setCurrentUser(newProfile)
-        setSuccessMsg("Perfil criado e ativado com sucesso!")
-        setTimeout(() => onClose(), 1000)
+        if (user) {
+          addProfile(user)
+          setCurrentUser(user)
+          setSuccessMsg("Conta e perfil criados com sucesso!")
+          setTimeout(() => onClose(), 1000)
+        }
         return
       }
 

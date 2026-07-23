@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Mail, Lock, User, AlertCircle, CheckCircle2, Zap } from "lucide-react"
 import { useApp, type UserProfile } from "@/lib/context"
 import { signInWithSupabase, signUpWithSupabase, isSupabaseConfigured } from "@/lib/supabase"
+import { authenticateLocalUser, registerUserAccount } from "@/lib/auth-service"
 
 interface SignInFormProps {
   onSuccess?: () => void
@@ -40,6 +41,12 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
       return
     }
 
+    if (password.length < 6) {
+      setErrorMsg("A senha deve ter no mínimo 6 caracteres.")
+      setLoading(false)
+      return
+    }
+
     try {
       if (isSignUp) {
         if (!name.trim()) {
@@ -47,28 +54,20 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           setLoading(false)
           return
         }
-        const initials = name
-          .trim()
-          .split(" ")
-          .map((p) => p[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2)
 
         if (!isConfigured) {
-          const userProfile: UserProfile = {
-            id: `usr_${Date.now()}`,
-            name: name.trim(),
-            email: email.trim().toLowerCase(),
-            avatar: initials || "US",
-            avatarColor: "#6366f1",
-            role: "Usuário",
-            verified: true,
+          const { user, error } = registerUserAccount(name, email, password)
+          if (error) {
+            setErrorMsg(error)
+            setLoading(false)
+            return
           }
-          addProfile(userProfile)
-          login(userProfile)
-          setSuccessMsg("Conta criada com sucesso!")
-          if (onSuccess) setTimeout(onSuccess, 500)
+          if (user) {
+            addProfile(user)
+            login(user)
+            setSuccessMsg("Conta criada com sucesso!")
+            if (onSuccess) setTimeout(onSuccess, 500)
+          }
           return
         }
 
@@ -77,11 +76,18 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           setErrorMsg(error.message || "Erro ao registrar conta.")
         } else if (data?.user) {
           const user = data.user
+          const initials = name
+            .trim()
+            .split(" ")
+            .map((p) => p[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2) || "US"
           const userProfile: UserProfile = {
             id: user.id,
             name: name.trim(),
             email: user.email || email.trim(),
-            avatar: initials || "US",
+            avatar: initials,
             avatarColor: "#6366f1",
             verified: true,
           }
@@ -93,20 +99,18 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
       } else {
         // Sign in
         if (!isConfigured) {
-          const namePart = email.split("@")[0] || "Usuário"
-          const initials = namePart.slice(0, 2).toUpperCase()
-          const userProfile: UserProfile = {
-            id: email.trim().toLowerCase(),
-            name: namePart.charAt(0).toUpperCase() + namePart.slice(1),
-            email: email.trim().toLowerCase(),
-            avatar: initials,
-            avatarColor: "#6366f1",
-            verified: true,
+          const { user, error } = authenticateLocalUser(email, password)
+          if (error) {
+            setErrorMsg(error)
+            setLoading(false)
+            return
           }
-          addProfile(userProfile)
-          login(userProfile)
-          setSuccessMsg(`Bem-vindo, ${userProfile.name}!`)
-          if (onSuccess) setTimeout(onSuccess, 500)
+          if (user) {
+            addProfile(user)
+            login(user)
+            setSuccessMsg(`Bem-vindo de volta, ${user.name}!`)
+            if (onSuccess) setTimeout(onSuccess, 500)
+          }
           return
         }
 
@@ -139,7 +143,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
   }
 
   const handleSocialClick = (provider: string) => {
-    setErrorMsg(`Login social via ${provider} ativado para o ambiente. Use e-mail e senha para prosseguir.`)
+    setErrorMsg(`Login social via ${provider} desativado. Registre-se ou faça login com seu e-mail e senha.`)
   }
 
   return (
@@ -212,7 +216,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
 
           {/* Password */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Senha</Label>
             <div className="flex items-center gap-2 border rounded-lg px-3 h-12 focus-within:ring-2 focus-within:ring-ring">
               <Lock className="h-5 w-5 text-muted-foreground" />
               <Input
