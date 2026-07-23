@@ -91,3 +91,22 @@ export function authenticateLocalUser(email: string, password: string): { user?:
 
   return { user: profile }
 }
+
+export function updateUserPassword(email: string, newPassword: string): { success: boolean; error?: string } {
+  const users = getRegisteredUsers()
+  const normalizedEmail = email.trim().toLowerCase()
+  const index = users.findIndex((u) => u.email === normalizedEmail)
+
+  if (index === -1) {
+    const res = registerUserAccount(email.split("@")[0], email, newPassword)
+    return res.user ? { success: true } : { success: false, error: res.error }
+  }
+
+  users[index].passwordHash = newPassword
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(users))
+    return { success: true }
+  } catch {
+    return { success: false, error: "Falha ao salvar a nova senha no navegador." }
+  }
+}
