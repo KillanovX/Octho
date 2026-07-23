@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
 import { Mail, Lock, User, AlertCircle, CheckCircle2, Zap } from "lucide-react"
 import { useApp, type UserProfile } from "@/lib/context"
-import { signInWithSupabase, signUpWithSupabase, isSupabaseConfigured } from "@/lib/supabase"
+import { signInWithSupabase, signUpWithSupabase, resetPasswordWithSupabase, isSupabaseConfigured } from "@/lib/supabase"
 import { authenticateLocalUser, registerUserAccount } from "@/lib/auth-service"
 
 interface SignInFormProps {
@@ -28,6 +28,28 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   const isConfigured = isSupabaseConfigured()
+
+  const handleForgotPassword = async () => {
+    setErrorMsg(null)
+    setSuccessMsg(null)
+    if (!email.trim()) {
+      setErrorMsg("Preencha seu e-mail no campo acima para redefinir sua senha.")
+      return
+    }
+    setLoading(true)
+    if (isConfigured) {
+      const { error } = await resetPasswordWithSupabase(email.trim())
+      setLoading(false)
+      if (error) {
+        setErrorMsg(error.message)
+      } else {
+        setSuccessMsg(`Enviamos um link de redefinição de senha para ${email.trim()}`)
+      }
+    } else {
+      setLoading(false)
+      setSuccessMsg(`Se o e-mail ${email.trim()} estiver cadastrado, as instruções foram enviadas.`)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -233,7 +255,7 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
               <button
                 type="button"
                 className="text-sm text-primary hover:underline"
-                onClick={() => setErrorMsg("Informe seu e-mail para receber as instruções de recuperação.")}
+                onClick={handleForgotPassword}
               >
                 Esqueceu a senha?
               </button>
