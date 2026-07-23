@@ -320,12 +320,10 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
               </div>
             </div>
 
-            {/* Tags (formerly Labels) */}
+            {/* Tags */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                  <TagIconHeader className="size-4 text-primary" /> Tags
-                </span>
+                <span className="text-sm font-semibold text-foreground">Tags</span>
                 <button
                   type="button"
                   onClick={() => setIsTagManagerOpen(true)}
