@@ -29,14 +29,31 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
 
   const isConfigured = isSupabaseConfigured()
 
-  const handleForgotPassword = () => {
+  const handleForgotPassword = async () => {
     setErrorMsg(null)
     setSuccessMsg(null)
     if (!email.trim()) {
-      setErrorMsg("Informe seu e-mail para continuar.")
+      setErrorMsg("Preencha seu e-mail no campo acima para receber as instruções.")
       return
     }
-    setSuccessMsg("Para cadastrar uma nova senha, utilize a opção 'Registre-se' abaixo com o mesmo e-mail.")
+    setLoading(true)
+    try {
+      const res = await fetch("/api/send-reset-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      const data = await res.json()
+      setLoading(false)
+      if (res.ok) {
+        setSuccessMsg(`E-mail de recuperação enviado com sucesso via Resend para ${email.trim()}!`)
+      } else {
+        setErrorMsg(data.error || "Erro ao enviar e-mail via Resend.")
+      }
+    } catch {
+      setLoading(false)
+      setErrorMsg("Falha de conexão ao enviar e-mail.")
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
