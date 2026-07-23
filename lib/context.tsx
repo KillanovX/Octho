@@ -71,7 +71,7 @@ export const users: UserProfile[] = [
 ]
 
 // ─── Views ──────────────────────────────────────────────────
-export type ViewId = "dashboard" | "inbox" | "my-tasks" | "kanban" | "projects" | "time-log" | "reports" | "settings"
+export type ViewId = "dashboard" | "inbox" | "my-tasks" | "kanban" | "projects" | "time-log" | "reports" | "settings" | "login"
 
 // ─── User Data ──────────────────────────────────────────────
 export type UserData = {
@@ -96,6 +96,8 @@ type AppContextType = {
   setCurrentUser: (user: UserProfile) => void
   profilesList: UserProfile[]
   addProfile: (profile: UserProfile) => void
+  isAuthenticated: boolean
+  login: (user: UserProfile) => void
   isAuthModalOpen: boolean
   openAuthModal: () => void
   closeAuthModal: () => void
@@ -301,6 +303,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [profilesList, setProfilesList] = useState<UserProfile[]>(users)
   const [activeView, setActiveView] = useState<ViewId>("dashboard")
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(true)
+
+  const login = useCallback((user: UserProfile) => {
+    setCurrentUserVal(user)
+    setIsAuthenticated(true)
+    setActiveView("dashboard")
+    setIsAuthModalOpen(false)
+  }, [])
 
   const addProfile = useCallback((newProfile: UserProfile) => {
     setProfilesList((prev) => {
@@ -431,7 +441,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleSignOut = useCallback(async () => {
     await signOutSupabase()
-    setIsAuthModalOpen(true)
+    setIsAuthenticated(false)
+    setActiveView("login")
+    setIsAuthModalOpen(false)
   }, [])
 
   // ── Mutations ──
@@ -591,6 +603,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCurrentUser: setCurrentUserVal,
         profilesList,
         addProfile,
+        isAuthenticated,
+        login,
         isAuthModalOpen,
         openAuthModal,
         closeAuthModal,
