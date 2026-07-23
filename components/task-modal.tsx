@@ -254,7 +254,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
       >
         {/* ── Card ── */}
         <div
-          className="relative w-full max-w-lg mx-4 rounded-2xl bg-card border border-border shadow-2xl p-6 animate-in fade-in slide-in-from-bottom-4 duration-300"
+          className="relative w-full max-w-2xl mx-4 rounded-2xl bg-card border border-border shadow-2xl p-7 animate-in fade-in slide-in-from-bottom-4 duration-300"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close button */}
