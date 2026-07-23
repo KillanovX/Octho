@@ -2,10 +2,14 @@ export type Priority = "urgent" | "high" | "medium" | "low" | "none"
 
 export type ColumnId = "backlog" | "todo" | "in_progress" | "done"
 
-export type Label = {
+export type Tag = {
+  id?: string
   name: string
-  color: string // hex-ish for the dot
+  color: string
+  icon?: string
 }
+
+export type Label = Tag // Alias for compatibility
 
 export type Task = {
   id: string
@@ -13,8 +17,10 @@ export type Task = {
   title: string
   column: ColumnId
   priority: Priority
-  labels: Label[]
-  assignee: string // initials
+  labels: Tag[]
+  assignee: string // User full name or ID
+  assigneeName?: string // Full name of user
+  assigneeAvatar?: string // Photo or initials
   assigneeColor: string
   hoursLogged: number
   estimate: number

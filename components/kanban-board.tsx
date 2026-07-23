@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, DragEvent } from "react"
-import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus, GripVertical, Filter } from "lucide-react"
+import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus, GripVertical, Filter, Tag as TagIcon } from "lucide-react"
 import { columns, type Priority, type Task, type ColumnId } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/context"
 import { TaskModal } from "@/components/task-modal"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, type SelectOption } from "@/components/ui/select"
+import { tagIconMap } from "@/components/tag-manager-modal"
 
 const priorityConfig: Record<Priority, { icon: typeof SignalHigh; className: string; label: string }> = {
   urgent: { icon: AlertTriangle, className: "text-destructive", label: "Urgente" },
@@ -223,36 +224,51 @@ function TaskCard({
         isDragOver && "border-t-2 border-t-primary pt-2.5"
       )}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <GripVertical className="size-3 text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100" />
-          <span className="font-mono text-xs text-muted-foreground">{task.code}</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <GripVertical className="size-3 text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100 shrink-0" />
+          <span className="font-mono text-xs text-muted-foreground shrink-0">{task.code}</span>
         </div>
-        <Avatar className="size-5 shrink-0">
-          {avatarMap[task.assignee] && <AvatarImage src={avatarMap[task.assignee]} alt={task.assignee} />}
-          <AvatarFallback style={{ backgroundColor: task.assigneeColor, color: "#fff" }} className="text-[9px] font-semibold">
-            {task.assignee}
-          </AvatarFallback>
-        </Avatar>
+
+        {/* Responsavel (Avatar + Full Name) */}
+        <div className="flex items-center gap-1.5 shrink-0 bg-muted/40 rounded-full pl-1 pr-2 py-0.5 border border-border/50">
+          <Avatar className="size-5 shrink-0 border border-border">
+            {avatarMap[task.assignee] && <AvatarImage src={avatarMap[task.assignee]} alt={task.assignee} />}
+            <AvatarFallback
+              style={{ backgroundColor: task.assigneeColor || "#6366f1", color: "#fff" }}
+              className="text-[9px] font-bold"
+            >
+              {task.assigneeAvatar || (task.assignee ? task.assignee.slice(0, 2).toUpperCase() : "US")}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-[11px] font-semibold text-foreground truncate max-w-[110px]">
+            {task.assigneeName || task.assignee}
+          </span>
+        </div>
       </div>
 
-      <p className="mt-1.5 text-sm leading-snug text-card-foreground text-pretty">{task.title}</p>
+      <p className="mt-2 text-sm leading-snug text-card-foreground text-pretty">{task.title}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <span className={cn("flex items-center", p.className)} title={p.label}>
           <p.icon className="size-3.5" />
         </span>
-        {task.labels.map((l) => (
-          <span
-            key={l.name}
-            className="flex items-center gap-1 rounded-full border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground"
-          >
-            <span className="size-1.5 rounded-full" style={{ backgroundColor: l.color }} />
-            {l.name}
-          </span>
-        ))}
+        {task.labels.map((l) => {
+          const TagIconComp = tagIconMap[l.icon || "tag"] || TagIcon
+          return (
+            <span
+              key={l.name}
+              className="flex items-center gap-1 rounded-full border border-border/80 px-2 py-0.5 text-[11px] font-medium text-foreground bg-card shadow-2xs"
+            >
+              <span className="flex items-center justify-center size-3 rounded-full" style={{ backgroundColor: l.color }}>
+                {TagIconComp && <TagIconComp className="size-2 text-white" />}
+              </span>
+              {l.name}
+            </span>
+          )
+        })}
         {(task.hoursLogged > 0 || task.estimate > 0) && (
-          <span className="ml-auto flex items-center gap-0.5 text-[11px] tabular-nums text-muted-foreground">
+          <span className="ml-auto flex items-center gap-0.5 text-[11px] tabular-nums text-muted-foreground font-medium">
             <Clock className="size-3" />
             {task.hoursLogged}/{task.estimate}h
           </span>

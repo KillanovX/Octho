@@ -1,21 +1,25 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from "react"
-import { X, AlertTriangle, SignalHigh, SignalMedium, SignalLow, Minus } from "lucide-react"
-import { Task, ColumnId, Priority, Label, columns } from "@/lib/data"
-import { useApp } from "@/lib/context"
+import {
+  X,
+  AlertTriangle,
+  SignalHigh,
+  SignalMedium,
+  SignalLow,
+  Minus,
+  Tag as TagIconHeader,
+  Plus,
+  User as UserIcon,
+} from "lucide-react"
+import { Task, ColumnId, Priority, Tag, columns } from "@/lib/data"
+import { useApp, UserProfile } from "@/lib/context"
 import { Select, SelectOption } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-
-// ─── Available labels ───────────────────────────────────────
-const availableLabels: Label[] = [
-  { name: "Design", color: "#8b5cf6" },
-  { name: "Frontend", color: "#3b82f6" },
-  { name: "Backend", color: "#10b981" },
-  { name: "Bug", color: "#ef4444" },
-  { name: "Conteúdo", color: "#f59e0b" },
-  { name: "Pesquisa", color: "#14b8a6" },
-]
+import { getRegisteredUsers } from "@/lib/auth-service"
+import { getStoredTags, saveStoredTags, TagItem } from "@/lib/tags-service"
+import { TagManagerModal, tagIconMap } from "@/components/tag-manager-modal"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 const columnOptions: SelectOption<ColumnId>[] = columns.map((col) => ({
   value: col.id,
@@ -64,7 +68,6 @@ const priorityOptionsList: SelectOption<Priority>[] = [
   },
 ]
 
-// ─── Props ──────────────────────────────────────────────────
 type TaskModalProps = {
   open: boolean
   onClose: () => void
@@ -73,7 +76,7 @@ type TaskModalProps = {
 }
 
 export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps) {
-  const { addTask, updateTask, deleteTask, currentUser } = useApp()
+  const { addTask, updateTask, deleteTask, currentUser, profilesList } = useApp()
 
   const isEdit = !!task
 
@@ -81,10 +84,41 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
   const [title, setTitle] = useState("")
   const [column, setColumn] = useState<ColumnId>(defaultColumn ?? "backlog")
   const [priority, setPriority] = useState<Priority>("none")
-  const [selectedLabels, setSelectedLabels] = useState<Label[]>([])
-  const [assignee, setAssignee] = useState("")
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([])
+  const [assigneeEmail, setAssigneeEmail] = useState<string>("")
   const [estimate, setEstimate] = useState<number>(0)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // ── Tags & Tag Manager Modal state ──
+  const [availableTags, setAvailableTags] = useState<TagItem[]>([])
+  const [isTagManagerOpen, setIsTagManagerOpen] = useState(false)
+
+  // ── Users list for Responsável Select ──
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([])
+
+  const loadAllUsers = useCallback(() => {
+    const map = new Map<string, UserProfile>()
+    if (currentUser?.email) {
+      map.set(currentUser.email.toLowerCase(), currentUser)
+    }
+    profilesList.forEach((p) => {
+      if (p.email) map.set(p.email.toLowerCase(), p)
+    })
+    const registered = getRegisteredUsers()
+    registered.forEach((u) => {
+      if (u.email && !map.has(u.email.toLowerCase())) {
+        map.set(u.email.toLowerCase(), {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          avatar: u.avatar,
+          avatarColor: u.avatarColor || "#6366f1",
+          verified: true,
+        })
+      }
+    })
+    setAllUsers(Array.from(map.values()))
+  }, [currentUser, profilesList])
 
   // ── Reset form when modal opens / task changes ──
   useEffect(() => {
@@ -92,23 +126,27 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
       setConfirmDelete(false)
       return
     }
+
+    loadAllUsers()
+    setAvailableTags(getStoredTags())
+
     if (task) {
       setTitle(task.title)
       setColumn(task.column)
       setPriority(task.priority)
-      setSelectedLabels(task.labels)
-      setAssignee(task.assignee)
+      setSelectedTags(task.labels || [])
+      setAssigneeEmail(task.assignee || currentUser.name)
       setEstimate(task.estimate)
     } else {
       setTitle("")
       setColumn(defaultColumn ?? "backlog")
       setPriority("none")
-      setSelectedLabels([])
-      setAssignee(currentUser.avatar)
+      setSelectedTags([])
+      setAssigneeEmail(currentUser.name || currentUser.email)
       setEstimate(0)
     }
     setConfirmDelete(false)
-  }, [open, task, defaultColumn, currentUser.avatar])
+  }, [open, task, defaultColumn, currentUser, loadAllUsers])
 
   // ── ESC key ──
   const handleKeyDown = useCallback(
@@ -125,25 +163,41 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
     }
   }, [open, handleKeyDown])
 
-  // ── Label toggle ──
-  const toggleLabel = (label: Label) => {
-    setSelectedLabels((prev) => {
-      const exists = prev.some((l) => l.name === label.name)
-      return exists ? prev.filter((l) => l.name !== label.name) : [...prev, label]
+  // ── Tag toggle ──
+  const toggleTag = (tag: TagItem) => {
+    setSelectedTags((prev) => {
+      const exists = prev.some((l) => l.name === tag.name)
+      return exists ? prev.filter((l) => l.name !== tag.name) : [...prev, { name: tag.name, color: tag.color, icon: tag.icon }]
     })
+  }
+
+  const handleUpdateTags = (newTags: TagItem[]) => {
+    setAvailableTags(newTags)
+    saveStoredTags(newTags)
   }
 
   // ── Submit ──
   const handleSave = () => {
     if (!title.trim()) return
 
+    const selectedUser = allUsers.find(
+      (u) => u.email.toLowerCase() === assigneeEmail.toLowerCase() || u.name === assigneeEmail
+    ) || currentUser
+
+    const assigneeName = selectedUser.name || currentUser.name
+    const assigneeAvatar = selectedUser.avatar || selectedUser.name.slice(0, 2).toUpperCase()
+    const assigneeColor = selectedUser.avatarColor || "#6366f1"
+
     if (isEdit && task) {
       updateTask(task.id, {
         title: title.trim(),
         column,
         priority,
-        labels: selectedLabels,
-        assignee: assignee.trim() || currentUser.avatar,
+        labels: selectedTags,
+        assignee: assigneeName,
+        assigneeName,
+        assigneeAvatar,
+        assigneeColor,
         estimate,
       })
     } else {
@@ -151,9 +205,11 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
         title: title.trim(),
         column,
         priority,
-        labels: selectedLabels,
-        assignee: assignee.trim() || currentUser.avatar,
-        assigneeColor: currentUser.avatarColor,
+        labels: selectedTags,
+        assignee: assigneeName,
+        assigneeName,
+        assigneeAvatar,
+        assigneeColor,
         hoursLogged: 0,
         estimate,
       })
@@ -174,6 +230,21 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
 
   if (!open) return null
 
+  const userOptions: SelectOption<string>[] = allUsers.map((u) => ({
+    value: u.name,
+    label: u.name,
+    icon: (
+      <Avatar className="size-5 shrink-0 border border-border">
+        <AvatarFallback
+          className="text-[9px] font-bold text-white"
+          style={{ backgroundColor: u.avatarColor || "#6366f1" }}
+        >
+          {u.avatar || u.name.slice(0, 2).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+    ),
+  }))
+
   return (
     <>
       {/* ── Overlay ── */}
@@ -183,7 +254,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
       >
         {/* ── Card ── */}
         <div
-          className="relative w-full max-w-lg mx-4 rounded-xl bg-card border border-border shadow-2xl p-6 animate-in fade-in slide-in-from-bottom-4 duration-300"
+          className="relative w-full max-w-lg mx-4 rounded-2xl bg-card border border-border shadow-2xl p-6 animate-in fade-in slide-in-from-bottom-4 duration-300"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close button */}
@@ -196,8 +267,8 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
           </button>
 
           {/* Title */}
-          <h2 className="text-lg font-semibold text-foreground mb-6">
-            {isEdit ? "Editar tarefa" : "Nova tarefa"}
+          <h2 className="text-lg font-bold text-foreground mb-6">
+            {isEdit ? "Editar Tarefa" : "Nova Tarefa"}
           </h2>
 
           {/* ── Form ── */}
@@ -220,7 +291,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Descreva a tarefa..."
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
               />
             </div>
 
@@ -249,60 +320,64 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
               </div>
             </div>
 
-            {/* Labels */}
-            <div className="space-y-1.5">
-              <span className="text-sm font-medium text-foreground">Labels</span>
+            {/* Tags (formerly Labels) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                  <TagIconHeader className="size-4 text-primary" /> Tags
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsTagManagerOpen(true)}
+                  className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                >
+                  <Plus className="size-3" /> Gerenciar Tags
+                </button>
+              </div>
+
               <div className="flex flex-wrap gap-2">
-                {availableLabels.map((label) => {
-                  const isSelected = selectedLabels.some((l) => l.name === label.name)
+                {availableTags.map((tag) => {
+                  const isSelected = selectedTags.some((l) => l.name === tag.name)
+                  const TagIconComp = tagIconMap[tag.icon || "tag"] || TagIconHeader
                   return (
                     <button
-                      key={label.name}
+                      key={tag.name}
                       type="button"
-                      onClick={() => toggleLabel(label)}
+                      onClick={() => toggleTag(tag)}
                       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border transition-all duration-150 ${
                         isSelected
                           ? "border-transparent text-white shadow-sm"
                           : "border-border text-muted-foreground hover:text-foreground bg-background"
                       }`}
-                      style={
-                        isSelected
-                          ? { backgroundColor: label.color }
-                          : undefined
-                      }
+                      style={isSelected ? { backgroundColor: tag.color } : undefined}
                     >
-                      <span
-                        className="h-2 w-2 rounded-full shrink-0"
-                        style={{ backgroundColor: label.color }}
-                      />
-                      {label.name}
+                      <TagIconComp className="size-3" style={!isSelected ? { color: tag.color } : undefined} />
+                      {tag.name}
                     </button>
                   )
                 })}
               </div>
             </div>
 
-            {/* Responsável + Horas (row) */}
+            {/* Responsável (Select Dropdown) + Horas estimadas */}
             <div className="grid grid-cols-2 gap-4">
-              {/* Responsável */}
-              <div className="space-y-1.5">
-                <label htmlFor="task-assignee" className="text-sm font-medium text-foreground">
-                  Responsável
-                </label>
-                <input
-                  id="task-assignee"
-                  type="text"
-                  value={assignee}
-                  onChange={(e) => setAssignee(e.target.value.toUpperCase().slice(0, 3))}
-                  placeholder="FA"
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow uppercase"
+              {/* Responsável Select */}
+              <div>
+                <Select<string>
+                  id="task-assignee-select"
+                  label="Responsável"
+                  value={assigneeEmail}
+                  onChange={(val) => setAssigneeEmail(val)}
+                  options={userOptions.length > 0 ? userOptions : [
+                    { value: currentUser.name, label: currentUser.name, icon: <UserIcon className="size-4" /> }
+                  ]}
                 />
               </div>
 
               {/* Horas estimadas */}
               <div className="space-y-1.5">
                 <label htmlFor="task-estimate" className="text-sm font-medium text-foreground">
-                  Horas estimadas
+                  Horas Estimadas
                 </label>
                 <input
                   id="task-estimate"
@@ -311,7 +386,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
                   step={0.5}
                   value={estimate}
                   onChange={(e) => setEstimate(Number(e.target.value))}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
                 />
               </div>
             </div>
@@ -330,7 +405,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
                         : "text-muted-foreground hover:text-red-500"
                     }`}
                   >
-                    {confirmDelete ? "Tem certeza?" : "Excluir"}
+                    {confirmDelete ? "Tem certeza?" : "Excluir Tarefa"}
                   </button>
                 )}
               </div>
@@ -338,14 +413,22 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
               {/* Save */}
               <button
                 type="submit"
-                className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+                className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
               >
-                Salvar
+                {isEdit ? "Salvar Alterações" : "Criar Tarefa"}
               </button>
             </div>
           </form>
         </div>
       </div>
+
+      {/* Tag Manager Modal */}
+      <TagManagerModal
+        open={isTagManagerOpen}
+        onClose={() => setIsTagManagerOpen(false)}
+        tags={availableTags}
+        onUpdateTags={handleUpdateTags}
+      />
     </>
   )
 }
