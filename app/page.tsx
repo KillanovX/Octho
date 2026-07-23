@@ -10,6 +10,7 @@ import { KanbanBoard } from "@/components/kanban-board"
 import { ActivityFeed } from "@/components/activity-feed"
 import { SearchModal } from "@/components/search-modal"
 import { TaskModal } from "@/components/task-modal"
+import { TaskDetailsModal } from "@/components/task-details-modal"
 import { AuthModal } from "@/components/auth-modal"
 import { useApp } from "@/lib/context"
 import { Task } from "@/lib/data"
@@ -129,8 +130,9 @@ export default function Page() {
         {activeView === "admin" && <AdminView />}
       </main>
 
+
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onSelectTask={handleSelectTask} />
-      <TaskModal open={!!editTask} onClose={() => setEditTask(null)} task={editTask} />
+      <TaskDetailsModal open={!!editTask} onClose={() => setEditTask(null)} task={editTask} />
       <AuthModal open={isAuthModalOpen} onClose={closeAuthModal} />
     </div>
   )

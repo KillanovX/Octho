@@ -11,6 +11,28 @@ export type Tag = {
 
 export type Label = Tag // Alias for compatibility
 
+export type TaskCheckpoint = {
+  id: string
+  title: string
+  completed: boolean
+}
+
+export type TaskComment = {
+  id: string
+  authorName: string
+  authorAvatar: string
+  authorColor: string
+  text: string
+  createdAt: number
+}
+
+export type TaskHistoryEvent = {
+  id: string
+  action: string
+  authorName: string
+  createdAt: number
+}
+
 export type Task = {
   id: string
   code: string
@@ -24,6 +46,10 @@ export type Task = {
   assigneeColor: string
   hoursLogged: number
   estimate: number
+  description?: string
+  checkpoints?: TaskCheckpoint[]
+  comments?: TaskComment[]
+  history?: TaskHistoryEvent[]
 }
 
 export const columns: { id: ColumnId; name: string; accent: string }[] = [

@@ -6,6 +6,7 @@ import { columns, type Priority, type Task, type ColumnId } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/context"
 import { TaskModal } from "@/components/task-modal"
+import { TaskDetailsModal } from "@/components/task-details-modal"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, type SelectOption } from "@/components/ui/select"
 import { tagIconMap } from "@/components/tag-manager-modal"
@@ -171,7 +172,8 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
         </div>
       </div>
 
-      <TaskModal
+
+      <TaskDetailsModal
         open={!!editTask}
         onClose={() => setEditTask(null)}
         task={editTask}
