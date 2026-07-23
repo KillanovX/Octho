@@ -91,3 +91,13 @@ export async function getAllSupabaseProfiles() {
     return []
   }
 }
+
+export async function updateSupabasePassword(newPassword: string) {
+  if (!supabase) return { data: null, error: new Error("Supabase não configurado") }
+  try {
+    const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+    return { data, error }
+  } catch (e: any) {
+    return { data: null, error: e }
+  }
+}

@@ -124,52 +124,42 @@ export default function SignInForm({ onSuccess, initialMode = "signin" }: SignIn
           if (onSuccess) setTimeout(onSuccess, 500)
         }
       } else {
-        // Sign in
-        if (!isConfigured) {
-          const { user, error } = authenticateLocalUser(email, password)
+        // 1. Check local authentication first (for instant reset password support)
+        const localRes = authenticateLocalUser(email, password)
+        if (localRes.user) {
+          addProfile(localRes.user)
+          login(localRes.user)
+          setSuccessMsg(`Bem-vindo de volta, ${localRes.user.name}!`)
+          if (onSuccess) setTimeout(onSuccess, 500)
+          return
+        }
+
+        // 2. Fallback to Supabase authentication if not found locally
+        if (isConfigured) {
+          const { data, error } = await signInWithSupabase(email, password)
           if (error) {
-            setErrorMsg(error)
-            setLoading(false)
-            return
-          }
-          if (user) {
-            addProfile(user)
-            login(user)
-            setSuccessMsg(`Bem-vindo de volta, ${user.name}!`)
+            setErrorMsg(error.message || "E-mail ou senha incorretos.")
+          } else if (data?.user) {
+            const user = data.user
+            const nameFromMeta = user.user_metadata?.name || email.split("@")[0]
+            const avatar = (user.user_metadata?.avatar || nameFromMeta.slice(0, 2)).toUpperCase()
+            const userProfile: UserProfile = {
+              id: user.id,
+              name: nameFromMeta,
+              email: user.email || email.trim(),
+              avatar,
+              avatarColor: "#6366f1",
+              verified: true,
+            }
+            addProfile(userProfile)
+            login(userProfile)
+            setSuccessMsg("Login realizado com sucesso!")
             if (onSuccess) setTimeout(onSuccess, 500)
           }
           return
         }
 
-        const { data, error } = await signInWithSupabase(email, password)
-        if (error) {
-          // Fallback to local registered accounts if password was updated locally
-          const localRes = authenticateLocalUser(email, password)
-          if (localRes.user) {
-            addProfile(localRes.user)
-            login(localRes.user)
-            setSuccessMsg(`Bem-vindo de volta, ${localRes.user.name}!`)
-            if (onSuccess) setTimeout(onSuccess, 500)
-            return
-          }
-          setErrorMsg(error.message || "E-mail ou senha incorretos.")
-        } else if (data?.user) {
-          const user = data.user
-          const nameFromMeta = user.user_metadata?.name || email.split("@")[0]
-          const avatar = (user.user_metadata?.avatar || nameFromMeta.slice(0, 2)).toUpperCase()
-          const userProfile: UserProfile = {
-            id: user.id,
-            name: nameFromMeta,
-            email: user.email || email,
-            avatar,
-            avatarColor: "#6366f1",
-            verified: true,
-          }
-          addProfile(userProfile)
-          login(userProfile)
-          setSuccessMsg("Login realizado com sucesso!")
-          if (onSuccess) setTimeout(onSuccess, 500)
-        }
+        setErrorMsg("E-mail ou senha incorretos.")
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Ocorreu um erro ao autenticar.")
