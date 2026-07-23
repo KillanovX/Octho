@@ -61,15 +61,6 @@ export async function signInWithSupabase(email: string, password: string) {
   return { data, error }
 }
 
-export async function resetPasswordWithSupabase(email: string) {
-  if (!supabase) return { data: null, error: new Error("Supabase não configurado") }
-  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/login` : undefined
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo,
-  })
-  return { data, error }
-}
-
 export async function signOutSupabase() {
   if (!supabase) return
   await supabase.auth.signOut()
