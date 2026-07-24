@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
+import { supabase, isSupabaseConfigured } from "@/lib/supabase"
+
 export type Project = {
   id: string
   name: string
@@ -36,24 +38,79 @@ export function ProjectsView() {
   const storageKey = `octho_user_projects_${currentUser?.id || "guest"}`
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey)
-      if (raw) {
-        setProjectsList(JSON.parse(raw))
-      } else {
-        setProjectsList([])
-      }
-    } catch {
-      setProjectsList([])
-    }
-  }, [storageKey])
+    const pid = currentUser?.id
+    if (!pid) return
 
-  const saveProjects = (newList: Project[]) => {
+    const loadProjects = async () => {
+      if (isSupabaseConfigured() && supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("projects")
+            .select("*")
+            .or(`user_id.eq.${pid},profile_id.eq.${pid}`)
+            .order("created_at", { ascending: false })
+          if (!error && data && data.length > 0) {
+            const list: Project[] = data.map((row: any) => ({
+              id: row.id,
+              name: row.name,
+              code: row.code,
+              description: row.description || "",
+              category: row.category || "Geral",
+              status: row.status || "active",
+              statusLabel: row.status === "completed" ? "Concluído" : "Em andamento",
+              progress: row.progress || 0,
+              tasksCount: 0,
+              hoursLogged: Number(row.hours_logged || 0),
+              estimate: Number(row.estimate || 0),
+              members: row.members || [],
+            }))
+            setProjectsList(list)
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(list))
+            } catch {}
+            return
+          }
+        } catch (e) {
+          console.error("Error loading projects from Supabase:", e)
+        }
+      }
+
+      try {
+        const raw = localStorage.getItem(storageKey)
+        if (raw) setProjectsList(JSON.parse(raw))
+      } catch {}
+    }
+
+    loadProjects()
+  }, [currentUser?.id, storageKey])
+
+  const saveProjects = async (newList: Project[], newProject?: Project) => {
     setProjectsList(newList)
     try {
       localStorage.setItem(storageKey, JSON.stringify(newList))
     } catch (e) {
       console.error("Error saving projects:", e)
+    }
+
+    if (isSupabaseConfigured() && supabase && currentUser?.id && newProject) {
+      try {
+        await supabase.from("projects").upsert({
+          id: newProject.id,
+          profile_id: currentUser.id,
+          user_id: currentUser.id.length > 5 ? currentUser.id : null,
+          name: newProject.name,
+          code: newProject.code,
+          description: newProject.description,
+          category: newProject.category,
+          status: newProject.status,
+          progress: newProject.progress,
+          hours_logged: newProject.hoursLogged,
+          estimate: newProject.estimate,
+          members: newProject.members,
+        })
+      } catch (e) {
+        console.error("Error saving project to Supabase:", e)
+      }
     }
   }
 
@@ -77,7 +134,7 @@ export function ProjectsView() {
     }
 
     const updated = [newProject, ...projectsList]
-    saveProjects(updated)
+    saveProjects(updated, newProject)
 
     setName("")
     setCode("")

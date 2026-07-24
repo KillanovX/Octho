@@ -1,5 +1,5 @@
 -- =============================================================
--- Octho — Schema do Banco de Dados (Supabase / PostgreSQL)
+-- Octho — Schema do Banco de Dados Completo (Supabase / PostgreSQL)
 -- =============================================================
 
 -- 1. Tabela de Perfis de Usuário (vinculada ao Supabase Auth)
@@ -10,6 +10,7 @@ create table if not exists public.profiles (
   avatar text not null,
   avatar_color text not null default '#6366f1',
   image_url text,
+  role text default 'user',
   created_at timestamptz default now()
 );
 
@@ -24,13 +25,45 @@ create table if not exists public.tasks (
   priority text not null default 'none',
   labels jsonb not null default '[]',
   assignee text not null default '',
+  assignee_name text,
+  assignee_avatar text,
   assignee_color text not null default '#888',
   hours_logged real not null default 0,
   estimate real not null default 0,
+  description text,
+  checkpoints jsonb not null default '[]',
+  comments jsonb not null default '[]',
+  history jsonb not null default '[]',
   created_at timestamptz not null default now()
 );
 
--- 3. Tabela de eventos de atividade
+alter table public.tasks add column if not exists assignee_name text;
+alter table public.tasks add column if not exists assignee_avatar text;
+alter table public.tasks add column if not exists description text;
+alter table public.tasks add column if not exists checkpoints jsonb default '[]';
+alter table public.tasks add column if not exists comments jsonb default '[]';
+alter table public.tasks add column if not exists history jsonb default '[]';
+
+-- 3. Tabela de reuniões (meetings)
+create table if not exists public.meetings (
+  id text primary key default gen_random_uuid()::text,
+  user_id uuid references auth.users(id) on delete cascade,
+  profile_id text not null default 'MA',
+  title text not null,
+  date text not null,
+  start_time text,
+  duration_minutes integer not null default 60,
+  linked_task_id text,
+  linked_task_code text,
+  linked_task_title text,
+  summary text,
+  participants jsonb default '[]',
+  status text not null default 'planned',
+  hours_added_to_task boolean default false,
+  created_at timestamptz default now()
+);
+
+-- 4. Tabela de eventos de atividade
 create table if not exists public.activity_events (
   id text primary key default gen_random_uuid()::text,
   user_id uuid references auth.users(id) on delete cascade,
@@ -42,10 +75,11 @@ create table if not exists public.activity_events (
   created_at timestamptz not null default now()
 );
 
--- 4. Tabela de projetos
+-- 5. Tabela de projetos
 create table if not exists public.projects (
   id text primary key default gen_random_uuid()::text,
   user_id uuid references auth.users(id) on delete cascade,
+  profile_id text not null default 'MA',
   name text not null,
   code text not null,
   description text,
@@ -58,19 +92,38 @@ create table if not exists public.projects (
   created_at timestamptz default now()
 );
 
--- 5. Índices para otimização de consultas
+-- 6. Tabela de tags customizadas
+create table if not exists public.custom_tags (
+  id text primary key default gen_random_uuid()::text,
+  user_id uuid references auth.users(id) on delete cascade,
+  profile_id text not null default 'MA',
+  name text not null,
+  color text not null,
+  icon text default 'tag',
+  created_at timestamptz default now()
+);
+
+-- 7. Índices para otimização de consultas
 create index if not exists idx_tasks_user on public.tasks (user_id);
 create index if not exists idx_tasks_profile on public.tasks (profile_id);
 create index if not exists idx_events_user on public.activity_events (user_id);
+create index if not exists idx_meetings_user on public.meetings (user_id);
+create index if not exists idx_meetings_profile on public.meetings (profile_id);
+create index if not exists idx_projects_user on public.projects (user_id);
+create index if not exists idx_tags_user on public.custom_tags (user_id);
 
--- 6. Configuração de Row Level Security (RLS)
+-- 8. Configuração de Row Level Security (RLS)
 alter table public.profiles enable row level security;
 alter table public.tasks enable row level security;
 alter table public.activity_events enable row level security;
 alter table public.projects enable row level security;
+alter table public.meetings enable row level security;
+alter table public.custom_tags enable row level security;
 
--- 7. Políticas de acesso seguro (usuários autenticados ou acesso anônimo no modo demo)
+-- 9. Políticas de acesso seguro (usuários autenticados ou acesso anônimo no modo demo)
 create policy "Acesso livre a perfis" on public.profiles for all using (true) with check (true);
 create policy "Acesso livre a tarefas" on public.tasks for all using (true) with check (true);
 create policy "Acesso livre a atividades" on public.activity_events for all using (true) with check (true);
 create policy "Acesso livre a projetos" on public.projects for all using (true) with check (true);
+create policy "Acesso livre a reuniões" on public.meetings for all using (true) with check (true);
+create policy "Acesso livre a tags" on public.custom_tags for all using (true) with check (true);

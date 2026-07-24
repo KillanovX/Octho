@@ -3,6 +3,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react"
 import {
   Task,
+  TaskCheckpoint,
+  TaskComment,
+  TaskHistoryEvent,
   ActivityEvent,
   type ColumnId,
   type Label,
@@ -10,7 +13,7 @@ import {
   columns,
 } from "./data"
 import { supabase, isSupabaseConfigured, signOutSupabase, getUserProfile } from "./supabase"
-import { type Meeting } from "./meetings"
+import { type Meeting, type MeetingStatus } from "./meetings"
 
 // ─── User Profiles ──────────────────────────────────────────
 export type UserProfile = {
@@ -156,9 +159,15 @@ async function loadTasksFromSupabase(profileId: string): Promise<Task[] | null> 
       priority: row.priority as Priority,
       labels: (row.labels ?? []) as Label[],
       assignee: row.assignee as string,
-      assigneeColor: row.assignee_color as string,
+      assigneeName: (row.assignee_name as string) || undefined,
+      assigneeAvatar: (row.assignee_avatar as string) || undefined,
+      assigneeColor: (row.assignee_color as string) || "#888",
       hoursLogged: Number(row.hours_logged ?? 0),
       estimate: Number(row.estimate ?? 0),
+      description: (row.description as string) || undefined,
+      checkpoints: (row.checkpoints as TaskCheckpoint[]) || [],
+      comments: (row.comments as TaskComment[]) || [],
+      history: (row.history as TaskHistoryEvent[]) || [],
     }))
   } catch {
     return null
@@ -178,12 +187,83 @@ async function saveTaskToSupabase(profileId: string, task: Task) {
       priority: task.priority,
       labels: task.labels,
       assignee: task.assignee,
+      assignee_name: task.assigneeName || null,
+      assignee_avatar: task.assigneeAvatar || null,
       assignee_color: task.assigneeColor,
       hours_logged: task.hoursLogged,
       estimate: task.estimate,
+      description: task.description || null,
+      checkpoints: task.checkpoints || [],
+      comments: task.comments || [],
+      history: task.history || [],
     })
   } catch (e) {
     console.error("Supabase save task error:", e)
+  }
+}
+
+async function loadMeetingsFromSupabase(profileId: string): Promise<Meeting[] | null> {
+  if (!isSupabaseConfigured() || !supabase || !profileId) return null
+  try {
+    const { data, error } = await supabase
+      .from("meetings")
+      .select("*")
+      .or(`user_id.eq.${profileId},profile_id.eq.${profileId}`)
+      .order("date", { ascending: false })
+    if (error) {
+      console.error("Supabase load meetings error:", error)
+      return null
+    }
+    if (!data) return null
+    return data.map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      title: row.title as string,
+      date: row.date as string,
+      startTime: (row.start_time as string) || undefined,
+      durationMinutes: Number(row.duration_minutes ?? 60),
+      linkedTaskId: (row.linked_task_id as string) || undefined,
+      linkedTaskCode: (row.linked_task_code as string) || undefined,
+      linkedTaskTitle: (row.linked_task_title as string) || undefined,
+      summary: (row.summary as string) || undefined,
+      participants: (row.participants as string[]) || [],
+      status: (row.status as MeetingStatus) || "planned",
+      hoursAddedToTask: Boolean(row.hours_added_to_task),
+    }))
+  } catch {
+    return null
+  }
+}
+
+async function saveMeetingToSupabase(profileId: string, m: Meeting) {
+  if (!isSupabaseConfigured() || !supabase || !profileId) return
+  try {
+    await supabase.from("meetings").upsert({
+      id: m.id,
+      profile_id: profileId,
+      user_id: profileId.length > 5 ? profileId : null,
+      title: m.title,
+      date: m.date,
+      start_time: m.startTime || null,
+      duration_minutes: m.durationMinutes,
+      linked_task_id: m.linkedTaskId || null,
+      linked_task_code: m.linkedTaskCode || null,
+      linked_task_title: m.linkedTaskTitle || null,
+      summary: m.summary || null,
+      participants: m.participants || [],
+      status: m.status,
+      hours_added_to_task: m.hoursAddedToTask || false,
+    })
+  } catch (e) {
+    console.error("Supabase save meeting error:", e)
+  }
+}
+
+async function deleteMeetingFromSupabase(meetingId: string) {
+  if (!isSupabaseConfigured() || !supabase) return
+  try {
+    await supabase.from("meetings").delete().eq("id", meetingId)
+  } catch (e) {
+    console.error("Supabase delete meeting error:", e)
   }
 }
 
@@ -402,6 +482,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const load = async () => {
       const tasks = await loadTasksFromSupabase(pid)
       const events = await loadEventsFromSupabase(pid)
+      const dbMeetings = await loadMeetingsFromSupabase(pid)
+
       if (tasks !== null || events !== null) {
         setUsersStore((prev) => {
           const existing = prev[pid] || buildDefaultUserData()
@@ -419,6 +501,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         })
       }
+
+      if (dbMeetings !== null) {
+        setMeetingsStore((prev) => ({ ...prev, [pid]: dbMeetings }))
+        try {
+          localStorage.setItem(`octho_meetings_${pid}`, JSON.stringify(dbMeetings))
+        } catch {}
+      }
+
       setSupabaseLoaded((prev) => ({ ...prev, [pid]: true }))
     }
     load()

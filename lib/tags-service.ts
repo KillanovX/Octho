@@ -1,8 +1,10 @@
+import { supabase, isSupabaseConfigured } from "./supabase"
+
 export type TagItem = {
   id: string
   name: string
   color: string
-  icon?: string // e.g. "palette" | "code" | "server" | "bug" | "file-text" | "search" | "tag" | "star" | "zap" | "shield" | "heart"
+  icon?: string
 }
 
 export const defaultTags: TagItem[] = [
@@ -28,11 +30,58 @@ export function getStoredTags(): TagItem[] {
   }
 }
 
-export function saveStoredTags(tags: TagItem[]): void {
+export function saveStoredTags(tags: TagItem[], profileId?: string): void {
   if (typeof window === "undefined") return
   try {
     localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(tags))
   } catch (e) {
     console.error("Error saving tags:", e)
+  }
+
+  const client = supabase
+  if (isSupabaseConfigured() && client && profileId) {
+    tags.forEach(async (tag) => {
+      try {
+        await client.from("custom_tags").upsert({
+          id: tag.id,
+          profile_id: profileId,
+          user_id: profileId.length > 5 ? profileId : null,
+          name: tag.name,
+          color: tag.color,
+          icon: tag.icon || "tag",
+        })
+      } catch (e) {
+        console.error("Error upserting tag to Supabase:", e)
+      }
+    })
+  }
+}
+
+export async function fetchTagsFromSupabase(profileId: string): Promise<TagItem[] | null> {
+  if (!isSupabaseConfigured() || !supabase || !profileId) return null
+  try {
+    const { data, error } = await supabase
+      .from("custom_tags")
+      .select("*")
+      .or(`user_id.eq.${profileId},profile_id.eq.${profileId}`)
+      .order("created_at", { ascending: true })
+    if (error || !data || data.length === 0) return null
+    return data.map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      name: row.name as string,
+      color: row.color as string,
+      icon: (row.icon as string) || "tag",
+    }))
+  } catch {
+    return null
+  }
+}
+
+export async function deleteTagFromSupabase(tagId: string): Promise<void> {
+  if (!isSupabaseConfigured() || !supabase) return
+  try {
+    await supabase.from("custom_tags").delete().eq("id", tagId)
+  } catch (e) {
+    console.error("Error deleting tag from Supabase:", e)
   }
 }
