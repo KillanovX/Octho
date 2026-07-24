@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { BarChart3, PieChart, Download, Users, CheckCircle2, Calendar, Target, Award } from "lucide-react"
+import { BarChart3, PieChart, Download, Users, CheckCircle2, Calendar, Target, Award, ArrowUpRight } from "lucide-react"
 import { useApp, users } from "@/lib/context"
 import { Select, SelectOption } from "@/components/ui/select"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -60,9 +60,14 @@ export function ReportsView() {
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
         {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
           <div>
-            <h2 className="text-xl font-bold text-foreground">Relatórios & Analytics</h2>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <BarChart3 className="size-4" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">Relatórios & Analytics</h2>
+            </div>
             <p className="text-xs text-muted-foreground">
               Métricas de desempenho, produtividade da equipe e alocação de tempo
             </p>
@@ -80,7 +85,7 @@ export function ReportsView() {
 
             <button
               onClick={handleExportCSV}
-              className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all shadow-sm shadow-primary/20"
             >
               <Download className="size-3.5" />
               <span>{exported ? "Exportado!" : "Exportar CSV"}</span>
@@ -90,83 +95,95 @@ export function ReportsView() {
 
         {/* Top KPIs */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="interactive-card rounded-xl border border-border bg-card p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">Taxa de Conclusão</span>
-              <div className="flex size-8 items-center justify-center rounded-lg bg-chart-4/10 text-chart-4">
-                <CheckCircle2 className="size-4" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Taxa de Conclusão</span>
+              <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                <CheckCircle2 className="size-4.5" />
               </div>
             </div>
-            <p className="mt-2 text-2xl font-bold text-card-foreground">{completionRate}%</p>
-            <p className="mt-1 text-xs text-muted-foreground">{completedTasks} de {totalTasks} tarefas concluídas</p>
+            <p className="mt-3 text-2xl font-bold text-card-foreground tabular-nums">{completionRate}%</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {completedTasks} de {totalTasks} tarefas concluídas
+            </p>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="interactive-card rounded-xl border border-border bg-card p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">Horas Trabalhadas</span>
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <BarChart3 className="size-4" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Horas Trabalhadas</span>
+              <div className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500">
+                <Target className="size-4.5" />
               </div>
             </div>
-            <p className="mt-2 text-2xl font-bold text-card-foreground">{totalLogged.toFixed(1)}h</p>
-            <p className="mt-1 text-xs text-muted-foreground">Previsto: {totalEstimated}h</p>
+            <p className="mt-3 text-2xl font-bold text-card-foreground tabular-nums">{totalLogged.toFixed(1)}h</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Meta estimada: {totalEstimated.toFixed(1)}h
+            </p>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="interactive-card rounded-xl border border-border bg-card p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">Média por Tarefa</span>
-              <div className="flex size-8 items-center justify-center rounded-lg bg-chart-3/10 text-chart-3">
-                <Target className="size-4" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Média h/tarefa</span>
+              <div className="flex size-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500">
+                <Award className="size-4.5" />
               </div>
             </div>
-            <p className="mt-2 text-2xl font-bold text-card-foreground">{avgHoursPerTask}h</p>
-            <p className="mt-1 text-xs text-muted-foreground">Média em tarefas concluídas</p>
+            <p className="mt-3 text-2xl font-bold text-card-foreground tabular-nums">{avgHoursPerTask}h</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Nas tarefas entregues
+            </p>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="interactive-card rounded-xl border border-border bg-card p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">Membros Ativos</span>
-              <div className="flex size-8 items-center justify-center rounded-lg bg-chart-2/10 text-chart-2">
-                <Users className="size-4" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Equipe Ativa</span>
+              <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                <Users className="size-4.5" />
               </div>
             </div>
-            <p className="mt-2 text-2xl font-bold text-card-foreground">{users.length}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Contribuidores no período</p>
+            <p className="mt-3 text-2xl font-bold text-card-foreground tabular-nums">{users.length}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Membros atribuídos
+            </p>
           </div>
         </div>
 
-        {/* Charts & Graphs Grid */}
+        {/* Breakdown Charts Grid */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Produtividade da Equipe */}
+          {/* Performance por Usuário */}
           <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-card-foreground">Desempenho por Membro</h3>
-                <p className="text-xs text-muted-foreground">Horas registradas e entregas</p>
-              </div>
-              <Award className="size-4 text-primary" />
-            </div>
+            <h3 className="text-sm font-bold text-card-foreground flex items-center gap-2 mb-1">
+              <Users className="size-4 text-primary" />
+              Horas Lançadas por Membro
+            </h3>
+            <p className="text-xs text-muted-foreground mb-5">Produtividade acumulada</p>
 
-            <div className="flex flex-col gap-4">
+            <div className="space-y-4">
               {assigneeStats.map((u) => {
                 const maxH = Math.max(...assigneeStats.map((s) => s.hours), 1)
                 const pct = Math.round((u.hours / maxH) * 100)
                 return (
-                  <div key={u.id} className="flex flex-col gap-1.5">
+                  <div key={u.id} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
-                        <Avatar className="size-6">
+                        <Avatar className="size-6 border border-border">
                           {u.imageUrl && <AvatarImage src={u.imageUrl} alt={u.name} />}
-                          <AvatarFallback style={{ backgroundColor: u.avatarColor, color: "#fff" }} className="text-[10px] font-bold">
+                          <AvatarFallback style={{ backgroundColor: u.avatarColor, color: "#fff" }} className="text-[9px] font-bold">
                             {u.avatar}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="font-medium text-foreground">{u.name}</span>
+                        <span className="font-semibold text-foreground">{u.name}</span>
                       </div>
-                      <span className="font-mono text-muted-foreground">{u.hours}h ({u.done}/{u.total} concluídas)</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground font-mono">{u.done} entregues</span>
+                        <span className="font-bold text-foreground tabular-nums w-12 text-right">{u.hours}h</span>
+                      </div>
                     </div>
-                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div className="h-full bg-primary transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: u.avatarColor }} />
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: u.avatarColor }}
+                      />
                     </div>
                   </div>
                 )
@@ -176,35 +193,34 @@ export function ReportsView() {
 
           {/* Distribuição por Prioridade */}
           <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-card-foreground">Volume por Prioridade</h3>
-                <p className="text-xs text-muted-foreground">Distribuição das tarefas ativas</p>
-              </div>
-              <PieChart className="size-4 text-chart-3" />
-            </div>
+            <h3 className="text-sm font-bold text-card-foreground flex items-center gap-2 mb-1">
+              <PieChart className="size-4 text-primary" />
+              Distribuição por Prioridade
+            </h3>
+            <p className="text-xs text-muted-foreground mb-5">Volume de tarefas por urgência</p>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-border bg-background p-3 text-center">
-                <span className="text-xs font-semibold text-destructive uppercase">Urgentes</span>
-                <p className="text-xl font-bold text-foreground mt-1">{prioritiesCount.urgent}</p>
-              </div>
-              <div className="rounded-lg border border-border bg-background p-3 text-center">
-                <span className="text-xs font-semibold text-chart-5 uppercase">Alta</span>
-                <p className="text-xl font-bold text-foreground mt-1">{prioritiesCount.high}</p>
-              </div>
-              <div className="rounded-lg border border-border bg-background p-3 text-center">
-                <span className="text-xs font-semibold text-chart-3 uppercase">Média</span>
-                <p className="text-xl font-bold text-foreground mt-1">{prioritiesCount.medium}</p>
-              </div>
-              <div className="rounded-lg border border-border bg-background p-3 text-center">
-                <span className="text-xs font-semibold text-chart-2 uppercase">Baixa</span>
-                <p className="text-xl font-bold text-foreground mt-1">{prioritiesCount.low}</p>
-              </div>
-              <div className="rounded-lg border border-border bg-background p-3 text-center col-span-2 sm:col-span-1">
-                <span className="text-xs font-semibold text-muted-foreground uppercase">Sem prioridade</span>
-                <p className="text-xl font-bold text-foreground mt-1">{prioritiesCount.none}</p>
-              </div>
+            <div className="space-y-4">
+              {[
+                { label: "Urgente", count: prioritiesCount.urgent, color: "bg-destructive text-destructive" },
+                { label: "Alta", count: prioritiesCount.high, color: "bg-chart-5 text-chart-5" },
+                { label: "Média", count: prioritiesCount.medium, color: "bg-chart-3 text-chart-3" },
+                { label: "Baixa", count: prioritiesCount.low, color: "bg-chart-2 text-chart-2" },
+                { label: "Sem prioridade", count: prioritiesCount.none, color: "bg-muted-foreground text-muted-foreground" },
+              ].map((p) => {
+                const pct = totalTasks > 0 ? Math.round((p.count / totalTasks) * 100) : 0
+                return (
+                  <div key={p.label} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`size-2.5 rounded-full ${p.color.split(" ")[0]}`} />
+                      <span className="font-semibold text-foreground truncate">{p.label}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-muted-foreground font-mono">{p.count} tarefas</span>
+                      <span className="font-bold text-foreground tabular-nums w-10 text-right">{pct}%</span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
