@@ -30,7 +30,13 @@ export function ReportsView() {
 
   // Hours by assignee
   const assigneeStats = users.map((u) => {
-    const userTasks = tasks.filter((t) => t.assignee === u.avatar)
+    const userTasks = tasks.filter((t) => {
+      const target = [u.id, u.name, u.email, u.avatar].filter(Boolean).map((s) => s.toLowerCase())
+      const a = (t.assignee || "").toLowerCase()
+      const an = (t.assigneeName || "").toLowerCase()
+      const aa = (t.assigneeAvatar || "").toLowerCase()
+      return target.some((val) => val === a || val === an || val === aa)
+    })
     const hours = userTasks.reduce((acc, t) => acc + t.hoursLogged, 0)
     const done = userTasks.filter((t) => t.column === "done").length
     return { ...u, hours, done, total: userTasks.length }

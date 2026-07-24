@@ -35,11 +35,27 @@ function ViewWrapper({ children, viewKey }: { children: React.ReactNode; viewKey
   )
 }
 
+function isTaskAssignedToUser(t: Task, u: { id?: string; name?: string; email?: string; avatar?: string }) {
+  if (!u) return false
+  const match = (val?: string) => {
+    if (!val) return false
+    const v = val.trim().toLowerCase()
+    if (!v) return false
+    return (
+      (u.id && u.id.trim().toLowerCase() === v) ||
+      (u.name && u.name.trim().toLowerCase() === v) ||
+      (u.email && u.email.trim().toLowerCase() === v) ||
+      (u.avatar && u.avatar.trim().toLowerCase() === v)
+    )
+  }
+  return match(t.assignee) || match(t.assigneeName) || match(t.assigneeAvatar)
+}
+
 function MyTasksView() {
   const { userData, currentUser } = useApp()
   const [editTask, setEditTask] = useState<Task | null>(null)
 
-  const myTasks = userData.tasks.filter(t => t.assignee === currentUser.avatar)
+  const myTasks = userData.tasks.filter((t) => isTaskAssignedToUser(t, currentUser))
 
   return (
     <>
