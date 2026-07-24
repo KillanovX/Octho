@@ -1,11 +1,10 @@
 "use client"
 
 import React, { useState } from "react"
-import { X, Check, Camera, Image as ImageIcon, Sparkles } from "lucide-react"
+import { X, Check, Camera, Sparkles } from "lucide-react"
 import { useApp } from "@/lib/context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { updateUserAvatarImage } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
@@ -22,17 +21,6 @@ export const shadcnAvatars = [
   { id: "user-10", name: "Avatar 10", url: "https://images.shadcnspace.com/assets/profiles/user-10.jpg" },
 ]
 
-export const avatarColors = [
-  "#6366f1", // Indigo
-  "#8b5cf6", // Violet
-  "#3b82f6", // Blue
-  "#10b981", // Emerald
-  "#ef4444", // Red
-  "#f59e0b", // Amber
-  "#ec4899", // Pink
-  "#06b6d4", // Cyan
-]
-
 type AvatarSelectorModalProps = {
   open: boolean
   onClose: () => void
@@ -44,23 +32,13 @@ export function AvatarSelectorModal({ open, onClose }: AvatarSelectorModalProps)
   const [selectedUrl, setSelectedUrl] = useState<string>(
     currentUser?.imageUrl || "https://images.shadcnspace.com/assets/profiles/user-1.jpg"
   )
-  const [selectedColor, setSelectedColor] = useState<string>(currentUser?.avatarColor || "#6366f1")
-  const [customUrl, setCustomUrl] = useState<string>("")
-  const [activeTab, setActiveTab] = useState<"preset" | "custom">("preset")
 
   if (!open) return null
 
-  const handleSelectPreset = (url: string) => {
-    setSelectedUrl(url)
-  }
-
   const handleSave = async () => {
-    const finalUrl = activeTab === "custom" && customUrl.trim() ? customUrl.trim() : selectedUrl
-
     const updatedUser = {
       ...currentUser,
-      imageUrl: finalUrl,
-      avatarColor: selectedColor,
+      imageUrl: selectedUrl,
     }
 
     setCurrentUser(updatedUser)
@@ -70,7 +48,7 @@ export function AvatarSelectorModal({ open, onClose }: AvatarSelectorModalProps)
     } catch {}
 
     if (currentUser?.id) {
-      await updateUserAvatarImage(currentUser.id, finalUrl)
+      await updateUserAvatarImage(currentUser.id, selectedUrl)
     }
 
     onClose()
@@ -78,22 +56,22 @@ export function AvatarSelectorModal({ open, onClose }: AvatarSelectorModalProps)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-6 animate-in fade-in zoom-in-95 duration-200"
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border pb-4">
+        <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2.5">
             <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Camera className="size-4.5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-foreground">Escolher Avatar</h3>
-              <p className="text-xs text-muted-foreground">Selecione um dos avatares shadcn disponíveis</p>
+              <h3 className="text-base font-bold text-foreground">Escolher Avatar</h3>
+              <p className="text-xs text-muted-foreground">Selecione um dos avatares disponíveis</p>
             </div>
           </div>
           <button
@@ -104,137 +82,64 @@ export function AvatarSelectorModal({ open, onClose }: AvatarSelectorModalProps)
           </button>
         </div>
 
-        {/* Current Preview */}
-        <div className="flex items-center gap-4 p-4 rounded-xl border border-border bg-muted/30">
-          <Avatar className="size-16 border-2 border-primary/40 shadow-sm">
-            <AvatarImage
-              src={activeTab === "custom" && customUrl.trim() ? customUrl.trim() : selectedUrl}
-              alt={currentUser?.name}
-            />
-            <AvatarFallback style={{ backgroundColor: selectedColor, color: "#fff" }} className="text-xl font-bold">
+        {/* Preview Atual */}
+        <div className="flex items-center gap-3.5 p-3 rounded-xl border border-border bg-muted/20">
+          <Avatar className="size-14 border border-primary/40 shadow-xs shrink-0">
+            <AvatarImage src={selectedUrl} alt={currentUser?.name} />
+            <AvatarFallback style={{ backgroundColor: currentUser?.avatarColor || "#6366f1", color: "#fff" }} className="text-base font-bold">
               {currentUser?.avatar || "US"}
             </AvatarFallback>
           </Avatar>
 
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-foreground">{currentUser?.name}</p>
-            <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
-            <span className="inline-flex items-center gap-1 mt-1 text-[11px] text-primary font-medium">
+            <p className="text-sm font-bold text-foreground truncate">{currentUser?.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{currentUser?.email}</p>
+            <span className="inline-flex items-center gap-1 mt-0.5 text-[11px] text-primary font-medium">
               <Sparkles className="size-3" /> Avatar selecionado
             </span>
           </div>
         </div>
 
-        {/* Tabs: Presets vs Custom */}
-        <div className="flex gap-1 p-1 rounded-xl bg-muted/60 border border-border">
-          <button
-            type="button"
-            onClick={() => setActiveTab("preset")}
-            className={cn(
-              "flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all",
-              activeTab === "preset"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Avatares Shadcn
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("custom")}
-            className={cn(
-              "flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all",
-              activeTab === "custom"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            URL Personalizada
-          </button>
+        {/* Grade de Avatares */}
+        <div className="grid grid-cols-5 gap-3 max-h-60 overflow-y-auto p-1">
+          {shadcnAvatars.map((item) => {
+            const isSelected = selectedUrl === item.url
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setSelectedUrl(item.url)}
+                className={cn(
+                  "relative flex items-center justify-center rounded-2xl p-1.5 transition-all duration-75 outline-none",
+                  isSelected
+                    ? "bg-primary/15 ring-2 ring-primary"
+                    : "hover:bg-accent/60"
+                )}
+              >
+                <div className="relative size-12 overflow-hidden rounded-full border border-border/80">
+                  <img
+                    src={item.url}
+                    alt={item.name}
+                    className="size-full object-cover"
+                  />
+                </div>
+
+                {isSelected && (
+                  <span className="absolute -top-1 -right-1 flex size-4.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs">
+                    <Check className="size-3" />
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
-        {/* Presets Grid */}
-        {activeTab === "preset" && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-5 gap-3 max-h-56 overflow-y-auto p-1">
-              {shadcnAvatars.map((item) => {
-                const isSelected = selectedUrl === item.url
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => handleSelectPreset(item.url)}
-                    className={cn(
-                      "group relative flex flex-col items-center gap-1.5 rounded-2xl p-2 transition-all duration-150",
-                      isSelected
-                        ? "bg-primary/10 ring-2 ring-primary scale-105"
-                        : "hover:bg-accent hover:scale-105"
-                    )}
-                  >
-                    <Avatar className="size-12 border border-border">
-                      <AvatarImage src={item.url} alt={item.name} />
-                      <AvatarFallback>{item.name[0]}</AvatarFallback>
-                    </Avatar>
-
-                    {isSelected && (
-                      <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                        <Check className="size-3" />
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Color accent selection */}
-            <div className="space-y-1.5 pt-2 border-t border-border">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Cor de fundo do Fallback
-              </label>
-              <div className="flex items-center gap-2 flex-wrap">
-                {avatarColors.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setSelectedColor(color)}
-                    className={cn(
-                      "size-7 rounded-full transition-transform",
-                      selectedColor === color ? "scale-125 ring-2 ring-primary ring-offset-2 ring-offset-card" : "hover:scale-110"
-                    )}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Custom URL Tab */}
-        {activeTab === "custom" && (
-          <div className="space-y-3 py-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <ImageIcon className="size-3.5" />
-              Link da Imagem
-            </label>
-            <Input
-              type="url"
-              placeholder="https://exemplo.com/sua-foto.jpg"
-              value={customUrl}
-              onChange={(e) => setCustomUrl(e.target.value)}
-              className="rounded-xl"
-            />
-            <p className="text-[11px] text-muted-foreground pl-1">
-              Cole a URL direta de uma imagem PNG, JPG ou WebP para usar como avatar.
-            </p>
-          </div>
-        )}
-
-        {/* Actions */}
+        {/* Ações */}
         <div className="flex justify-end gap-2 pt-2 border-t border-border">
-          <Button variant="outline" onClick={onClose} className="rounded-xl">
+          <Button variant="outline" onClick={onClose} className="rounded-xl h-9 text-xs">
             Cancelar
           </Button>
-          <Button onClick={handleSave} className="rounded-xl gap-1.5">
+          <Button onClick={handleSave} className="rounded-xl h-9 text-xs gap-1.5">
             <Check className="size-4" />
             Salvar Avatar
           </Button>

@@ -196,7 +196,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
           className="mt-2 flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-all duration-150 hover:bg-sidebar-accent group"
         >
           <div className="relative shrink-0">
-            <Avatar className="size-7 transition-transform duration-200 group-hover:scale-105">
+            <Avatar className="size-7">
               {currentUser?.imageUrl && <AvatarImage src={currentUser.imageUrl} alt={userName} />}
               <AvatarFallback style={{ backgroundColor: avatarColor, color: "#fff" }} className="text-xs font-semibold">
                 {userAvatar}

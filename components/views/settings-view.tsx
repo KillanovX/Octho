@@ -57,7 +57,7 @@ export function SettingsView() {
 
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                 <div className="relative group cursor-pointer shrink-0" onClick={() => setIsAvatarModalOpen(true)}>
-                  <Avatar className="size-16 border-2 border-primary/30 transition-transform duration-200 group-hover:scale-105">
+                  <Avatar className="size-16 border-2 border-primary/30 group-hover:border-primary transition-colors">
                     {userAvatarSrc && <AvatarImage src={userAvatarSrc} alt={currentUser.name} />}
                     <AvatarFallback style={{ backgroundColor: currentUser.avatarColor, color: "#fff" }} className="text-lg font-bold">
                       {currentUser.avatar}
