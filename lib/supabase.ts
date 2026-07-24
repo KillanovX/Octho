@@ -101,3 +101,15 @@ export async function updateSupabasePassword(newPassword: string) {
     return { data: null, error: e }
   }
 }
+
+export async function updateUserAvatarImage(userId: string, imageUrl: string) {
+  if (!supabase || !userId) return
+  try {
+    await supabase.from("profiles").upsert({
+      id: userId,
+      image_url: imageUrl,
+    })
+  } catch (e) {
+    console.error("Error updating avatar image in Supabase:", e)
+  }
+}

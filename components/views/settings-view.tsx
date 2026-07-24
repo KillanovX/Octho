@@ -1,9 +1,11 @@
 "use client"
 
 import React, { useState } from "react"
-import { User, Bell, Sliders, Shield, Save, Check, Moon, Sun, Monitor, LogOut } from "lucide-react"
+import { User, Bell, Sliders, Shield, Save, Check, Moon, Sun, Monitor, LogOut, Camera } from "lucide-react"
 import { useApp } from "@/lib/context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { AvatarSelectorModal } from "@/components/avatar-selector-modal"
+import { Button } from "@/components/ui/button"
 
 const avatarMap: Record<string, string> = {
   MA: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
@@ -18,6 +20,9 @@ export function SettingsView() {
   const [email, setEmail] = useState(currentUser.email)
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [soundEffects, setSoundEffects] = useState(true)
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
+
+  const userAvatarSrc = currentUser.imageUrl || avatarMap[currentUser.avatar]
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,122 +36,145 @@ export function SettingsView() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
-      <div className="mx-auto flex max-w-[900px] flex-col gap-6">
-        {/* Header */}
-        <div className="border-b border-border pb-4">
-          <h2 className="text-xl font-bold text-foreground">Configurações</h2>
-          <p className="text-xs text-muted-foreground">
-            Gerencie seu perfil, preferências e preferências de sistema
-          </p>
-        </div>
+    <>
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="mx-auto flex max-w-[900px] flex-col gap-6">
+          {/* Header */}
+          <div className="border-b border-border pb-4">
+            <h2 className="text-xl font-bold text-foreground">Configurações</h2>
+            <p className="text-xs text-muted-foreground">
+              Gerencie seu perfil, preferências e preferências de sistema
+            </p>
+          </div>
 
-        <form onSubmit={handleSave} className="flex flex-col gap-6">
-          {/* Perfil */}
-          <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 border-b border-border pb-3 mb-4 font-semibold text-sm text-card-foreground">
-              <User className="size-4 text-primary" />
-              <span>Perfil do Usuário</span>
-            </div>
+          <form onSubmit={handleSave} className="flex flex-col gap-6">
+            {/* Perfil */}
+            <div className="rounded-xl border border-border bg-card p-5">
+              <div className="flex items-center gap-2 border-b border-border pb-3 mb-4 font-semibold text-sm text-card-foreground">
+                <User className="size-4 text-primary" />
+                <span>Perfil do Usuário</span>
+              </div>
 
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              <Avatar className="size-16 border-2 border-primary/20">
-                {avatarMap[currentUser.avatar] && <AvatarImage src={avatarMap[currentUser.avatar]} alt={currentUser.name} />}
-                <AvatarFallback style={{ backgroundColor: currentUser.avatarColor, color: "#fff" }} className="text-lg font-bold">
-                  {currentUser.avatar}
-                </AvatarFallback>
-              </Avatar>
-
-              <div className="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Nome Completo</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
-                  />
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                <div className="relative group cursor-pointer shrink-0" onClick={() => setIsAvatarModalOpen(true)}>
+                  <Avatar className="size-16 border-2 border-primary/30 transition-transform duration-200 group-hover:scale-105">
+                    {userAvatarSrc && <AvatarImage src={userAvatarSrc} alt={currentUser.name} />}
+                    <AvatarFallback style={{ backgroundColor: currentUser.avatarColor, color: "#fff" }} className="text-lg font-bold">
+                      {currentUser.avatar}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 text-white">
+                    <Camera className="size-5" />
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Email Profissional</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
-                  />
+                <div className="flex flex-col gap-1 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAvatarModalOpen(true)}
+                    className="rounded-xl gap-1.5 text-xs font-semibold"
+                  >
+                    <Camera className="size-3.5 text-primary" />
+                    Trocar Avatar
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">Clique para escolher entre os avatares Shadcn</p>
+                </div>
+
+                <div className="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Nome Completo</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Email Profissional</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Notificações & Preferências */}
-          <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 border-b border-border pb-3 mb-4 font-semibold text-sm text-card-foreground">
-              <Bell className="size-4 text-chart-3" />
-              <span>Notificações & Alertas</span>
+            {/* Notificações & Preferências */}
+            <div className="rounded-xl border border-border bg-card p-5">
+              <div className="flex items-center gap-2 border-b border-border pb-3 mb-4 font-semibold text-sm text-card-foreground">
+                <Bell className="size-4 text-chart-3" />
+                <span>Notificações & Alertas</span>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Notificações por Email</p>
+                    <p className="text-xs text-muted-foreground">Receber resumos de atividades e menções em tarefas</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={emailNotifications}
+                    onChange={(e) => setEmailNotifications(e.target.checked)}
+                    className="size-4 rounded border-border accent-primary cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer border-t border-border pt-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Sons do Timer</p>
+                    <p className="text-xs text-muted-foreground">Reproduzir avisos ao concluir ou pausar o cronômetro</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={soundEffects}
+                    onChange={(e) => setSoundEffects(e.target.checked)}
+                    className="size-4 rounded border-border accent-primary cursor-pointer"
+                  />
+                </label>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <label className="flex items-center justify-between cursor-pointer">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Notificações por Email</p>
-                  <p className="text-xs text-muted-foreground">Receber resumos de atividades e menções em tarefas</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={emailNotifications}
-                  onChange={(e) => setEmailNotifications(e.target.checked)}
-                  className="size-4 rounded border-border accent-primary cursor-pointer"
-                />
-              </label>
+            {/* Botão de Salvar e Sair */}
+            <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/20 transition-colors"
+              >
+                <LogOut className="size-4" />
+                <span>Sair da conta</span>
+              </button>
 
-              <label className="flex items-center justify-between cursor-pointer border-t border-border pt-4">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Sons do Timer</p>
-                  <p className="text-xs text-muted-foreground">Reproduzir avisos ao concluir ou pausar o cronômetro</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={soundEffects}
-                  onChange={(e) => setSoundEffects(e.target.checked)}
-                  className="size-4 rounded border-border accent-primary cursor-pointer"
-                />
-              </label>
+              <button
+                type="submit"
+                className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                {saved ? (
+                  <>
+                    <Check className="size-4" />
+                    <span>Salvo com sucesso!</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="size-4" />
+                    <span>Salvar Alterações</span>
+                  </>
+                )}
+              </button>
             </div>
-          </div>
-
-          {/* Botão de Salvar e Sair */}
-          <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
-            <button
-              type="button"
-              onClick={() => signOut()}
-              className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/20 transition-colors"
-            >
-              <LogOut className="size-4" />
-              <span>Sair da conta</span>
-            </button>
-
-            <button
-              type="submit"
-              className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              {saved ? (
-                <>
-                  <Check className="size-4" />
-                  <span>Salvo com sucesso!</span>
-                </>
-              ) : (
-                <>
-                  <Save className="size-4" />
-                  <span>Salvar Alterações</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
+
+      <AvatarSelectorModal open={isAvatarModalOpen} onClose={() => setIsAvatarModalOpen(false)} />
+    </>
   )
 }

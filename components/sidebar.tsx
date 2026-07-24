@@ -17,10 +17,12 @@ import {
   VerifiedIcon,
   LogOut,
   Video,
+  Camera,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp, type ViewId } from "@/lib/context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { AvatarSelectorModal } from "@/components/avatar-selector-modal"
 
 type NavDef = { name: string; icon: typeof Inbox; view: ViewId; badge?: string }
 
@@ -46,6 +48,8 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
   const userEmail = currentUser?.email || ""
   const userAvatar = currentUser?.avatar || "US"
   const avatarColor = currentUser?.avatarColor || "#6366f1"
+
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
 
   const isSuperAdmin = currentUser?.email?.toLowerCase() === "flavio.adsv@gmail.com"
 
@@ -124,6 +128,19 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
         {/* User Switcher Popover */}
         {showSwitcher && (
           <div className="absolute bottom-14 left-0 right-0 z-50 mb-1 rounded-xl border border-border bg-card p-2 shadow-xl shadow-black/10 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <button
+              onClick={() => {
+                setIsAvatarModalOpen(true)
+                setShowSwitcher(false)
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-semibold text-primary transition-colors hover:bg-primary/10 mb-1"
+            >
+              <Camera className="size-3.5" />
+              <span>Trocar foto de perfil</span>
+            </button>
+
+            <div className="my-1 border-t border-border" />
+
             {profilesList.length > 1 && (
               <>
                 <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -201,6 +218,8 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
           />
         </button>
       </div>
+
+      <AvatarSelectorModal open={isAvatarModalOpen} onClose={() => setIsAvatarModalOpen(false)} />
     </aside>
   )
 }
