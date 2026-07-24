@@ -19,6 +19,7 @@ import {
   Users,
   ArrowRight,
   Timer,
+  Building2,
 } from "lucide-react"
 import { useApp } from "@/lib/context"
 import { type Meeting, type MeetingStatus } from "@/lib/meetings"
@@ -27,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { Select, type SelectOption } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { getStoredClients, saveStoredClient } from "@/lib/clients-service"
 
 // ─── Duration helpers ────────────────────────────────────────────
 function fmtDuration(minutes: number): string {
@@ -81,6 +83,7 @@ function MeetingForm({
   const [title, setTitle]               = useState(initial?.title ?? "")
   const [date, setDate]                 = useState(initial?.date ?? new Date().toISOString().slice(0, 10))
   const [startTime, setStartTime]       = useState(initial?.startTime ?? "")
+  const [client, setClient]             = useState(initial?.client ?? "")
   const [durationSel, setDurationSel]   = useState<string>(
     initial?.durationMinutes ? String(initial.durationMinutes) : "60"
   )
@@ -104,11 +107,14 @@ function MeetingForm({
     e.preventDefault()
     if (!title.trim()) return
     const linkedTask = activeTasks.find((t) => t.id === linkedTaskId)
+    const cleanClient = client.trim() || undefined
+    if (cleanClient) saveStoredClient(cleanClient)
     onSave({
       title: title.trim(),
       date,
       startTime: startTime || undefined,
       durationMinutes,
+      client: cleanClient,
       linkedTaskId: linkedTaskId || undefined,
       linkedTaskCode: linkedTask?.code,
       linkedTaskTitle: linkedTask?.title,
@@ -188,6 +194,26 @@ function MeetingForm({
           onChange={setStatus}
           options={statusOptions}
         />
+      </div>
+
+      {/* Cliente */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          <Building2 className="size-3" />
+          Cliente (opcional)
+        </label>
+        <Input
+          placeholder="Ex: Acme Corp, TechLabs, Banco Itaú..."
+          list="meeting-clients-list"
+          value={client}
+          onChange={(e) => setClient(e.target.value)}
+          className="rounded-xl"
+        />
+        <datalist id="meeting-clients-list">
+          {getStoredClients().map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
       </div>
 
       {/* Link to Task */}
@@ -293,6 +319,12 @@ function MeetingCard({
                   <Timer className="size-3" />
                   {fmtDuration(meeting.durationMinutes)}
                 </span>
+                {meeting.client && (
+                  <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/60">
+                    <Building2 className="size-3 text-primary" />
+                    {meeting.client}
+                  </span>
+                )}
                 {meeting.linkedTaskCode && (
                   <span className="flex items-center gap-1 text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">
                     <Link2 className="size-2.5" />

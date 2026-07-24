@@ -43,6 +43,7 @@ alter table public.tasks add column if not exists description text;
 alter table public.tasks add column if not exists checkpoints jsonb default '[]';
 alter table public.tasks add column if not exists comments jsonb default '[]';
 alter table public.tasks add column if not exists history jsonb default '[]';
+alter table public.tasks add column if not exists client text;
 
 -- 3. Tabela de reuniões (meetings)
 create table if not exists public.meetings (
@@ -53,6 +54,7 @@ create table if not exists public.meetings (
   date text not null,
   start_time text,
   duration_minutes integer not null default 60,
+  client text,
   linked_task_id text,
   linked_task_code text,
   linked_task_title text,

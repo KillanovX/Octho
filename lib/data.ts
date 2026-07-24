@@ -40,6 +40,7 @@ export type Task = {
   column: ColumnId
   priority: Priority
   labels: Tag[]
+  client?: string
   assignee: string // User full name or ID
   assigneeName?: string // Full name of user
   assigneeAvatar?: string // Photo or initials

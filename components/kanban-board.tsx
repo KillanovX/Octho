@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, DragEvent } from "react"
-import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus, GripVertical, Filter, Tag as TagIcon } from "lucide-react"
+import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus, GripVertical, Filter, Tag as TagIcon, Building2 } from "lucide-react"
 import { columns, type Priority, type Task, type ColumnId } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/context"
@@ -280,6 +280,12 @@ function TaskCard({
         <span className={cn("flex items-center", p.className)} title={p.label}>
           <p.icon className="size-3.5" />
         </span>
+        {task.client && (
+          <span className="flex items-center gap-1 rounded-full border border-border/80 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground bg-muted/50">
+            <Building2 className="size-3 text-primary shrink-0" />
+            <span className="truncate max-w-[100px]">{task.client}</span>
+          </span>
+        )}
         {task.labels.map((l) => {
           const TagIconComp = tagIconMap[l.icon || "tag"] || TagIcon
           return (

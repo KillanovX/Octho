@@ -11,6 +11,7 @@ import {
   Tag as TagIconHeader,
   Plus,
   User as UserIcon,
+  Building2,
 } from "lucide-react"
 import { Task, ColumnId, Priority, Tag, columns } from "@/lib/data"
 import { useApp, UserProfile } from "@/lib/context"
@@ -18,6 +19,7 @@ import { Select, SelectOption } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { getRegisteredUsers } from "@/lib/auth-service"
 import { getStoredTags, saveStoredTags, TagItem } from "@/lib/tags-service"
+import { getStoredClients, saveStoredClient } from "@/lib/clients-service"
 import { TagManagerModal, tagIconMap } from "@/components/tag-manager-modal"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
@@ -85,6 +87,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
   const [column, setColumn] = useState<ColumnId>(defaultColumn ?? "backlog")
   const [priority, setPriority] = useState<Priority>("none")
   const [selectedTags, setSelectedTags] = useState<Tag[]>([])
+  const [clientName, setClientName] = useState<string>("")
   const [assigneeEmail, setAssigneeEmail] = useState<string>("")
   const [estimate, setEstimate] = useState<number>(0)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -135,6 +138,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
       setColumn(task.column)
       setPriority(task.priority)
       setSelectedTags(task.labels || [])
+      setClientName(task.client || "")
       setAssigneeEmail(task.assignee || currentUser.name)
       setEstimate(task.estimate)
     } else {
@@ -142,6 +146,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
       setColumn(defaultColumn ?? "backlog")
       setPriority("none")
       setSelectedTags([])
+      setClientName("")
       setAssigneeEmail(currentUser.name || currentUser.email)
       setEstimate(0)
     }
@@ -187,6 +192,11 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
     const assigneeName = selectedUser.name || currentUser.name
     const assigneeAvatar = selectedUser.avatar || selectedUser.name.slice(0, 2).toUpperCase()
     const assigneeColor = selectedUser.avatarColor || "#6366f1"
+    const finalClient = clientName.trim() || undefined
+
+    if (finalClient) {
+      saveStoredClient(finalClient)
+    }
 
     if (isEdit && task) {
       updateTask(task.id, {
@@ -194,6 +204,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
         column,
         priority,
         labels: selectedTags,
+        client: finalClient,
         assignee: assigneeName,
         assigneeName,
         assigneeAvatar,
@@ -206,6 +217,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
         column,
         priority,
         labels: selectedTags,
+        client: finalClient,
         assignee: assigneeName,
         assigneeName,
         assigneeAvatar,
@@ -355,6 +367,28 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
                   )
                 })}
               </div>
+            </div>
+
+            {/* Cliente (opcional) */}
+            <div className="space-y-1.5">
+              <label htmlFor="task-client" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <Building2 className="size-4 text-muted-foreground" />
+                Cliente (opcional)
+              </label>
+              <input
+                id="task-client"
+                type="text"
+                placeholder="Ex: Acme Corp, TechLabs, Banco Itaú..."
+                list="clients-list"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+              />
+              <datalist id="clients-list">
+                {getStoredClients().map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
             </div>
 
             {/* Responsável (Select Dropdown) + Horas estimadas */}

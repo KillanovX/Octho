@@ -20,6 +20,7 @@ import {
   Send,
   Pencil,
   Play,
+  Building2,
 } from "lucide-react"
 import { Task, ColumnId, Priority, TaskCheckpoint, TaskComment, TaskHistoryEvent, columns } from "@/lib/data"
 import { useApp, UserProfile } from "@/lib/context"
@@ -28,6 +29,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { tagIconMap } from "@/components/tag-manager-modal"
+import { getStoredClients, saveStoredClient } from "@/lib/clients-service"
 import { getRegisteredUsers } from "@/lib/auth-service"
 
 const priorityOptionsList: SelectOption<Priority>[] = [
@@ -166,6 +168,16 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
       assigneeName: newAssigneeName,
       assigneeAvatar,
       assigneeColor,
+      history: updatedHistory,
+    })
+  }
+
+  const handleClientChange = (newClient: string) => {
+    const clean = newClient.trim()
+    if (clean) saveStoredClient(clean)
+    const updatedHistory = addHistoryEvent(`Cliente alterado para "${clean || "Nenhum"}"`)
+    updateTask(task.id, {
+      client: clean || undefined,
       history: updatedHistory,
     })
   }
@@ -501,6 +513,32 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
                 options={userOptions}
                 triggerClassName="h-10 text-xs rounded-xl"
               />
+            </div>
+
+            {/* Cliente */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Building2 className="size-3.5" />
+                Cliente
+              </label>
+              <input
+                type="text"
+                placeholder="Nome do cliente..."
+                list="details-clients-list"
+                defaultValue={task.client || ""}
+                onBlur={(e) => handleClientChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur()
+                  }
+                }}
+                className="w-full h-10 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring transition-shadow"
+              />
+              <datalist id="details-clients-list">
+                {getStoredClients().map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
             </div>
 
             {/* Horas */}
