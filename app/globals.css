@@ -274,23 +274,7 @@
   box-shadow: none;
 }
 
-/* ─── Nav Active Indicator ──────────────────────────────────────── */
-.nav-item-active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 20%;
-  height: 60%;
-  width: 3px;
-  background: var(--primary);
-  border-radius: 0 3px 3px 0;
-  animation: navIndicatorIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
 
-@keyframes navIndicatorIn {
-  from { transform: scaleY(0); opacity: 0; }
-  to   { transform: scaleY(1); opacity: 1; }
-}
 
 /* ─── Smooth Progress Bars ──────────────────────────────────────── */
 .progress-bar-fill {

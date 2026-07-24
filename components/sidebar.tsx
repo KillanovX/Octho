@@ -225,7 +225,7 @@ function NavItem({
       className={cn(
         "relative flex items-center gap-2.5 rounded-xl px-2 py-2 text-sm transition-all duration-150",
         active
-          ? "nav-item-active bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
+          ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
           : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
       )}
     >
