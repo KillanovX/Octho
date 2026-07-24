@@ -627,7 +627,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (m: Omit<Meeting, "id">): Meeting => {
       const newMeeting: Meeting = { ...m, id: crypto.randomUUID() }
       mutateMeetings((prev) => [newMeeting, ...prev])
-      logActivity("agendou reunião", newMeeting.title)
+      const actionLabel =
+        newMeeting.status === "completed"
+          ? "concluiu reunião"
+          : newMeeting.status === "cancelled"
+          ? "cancelou reunião"
+          : "agendou reunião"
+      logActivity(actionLabel, newMeeting.title)
       return newMeeting
     },
     [mutateMeetings, logActivity]
@@ -635,16 +641,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateMeeting = useCallback(
     (id: string, updates: Partial<Meeting>) => {
+      const existing = meetings.find((m) => m.id === id)
       mutateMeetings((prev) => prev.map((m) => (m.id === id ? { ...m, ...updates } : m)))
+      if (existing) {
+        const title = updates.title ?? existing.title
+        if (updates.status && updates.status !== existing.status) {
+          const actionLabel =
+            updates.status === "completed"
+              ? "concluiu reunião"
+              : updates.status === "cancelled"
+              ? "cancelou reunião"
+              : "agendou reunião"
+          logActivity(actionLabel, title)
+        }
+      }
     },
-    [mutateMeetings]
+    [meetings, mutateMeetings, logActivity]
   )
 
   const deleteMeeting = useCallback(
     (id: string) => {
+      const existing = meetings.find((m) => m.id === id)
       mutateMeetings((prev) => prev.filter((m) => m.id !== id))
+      if (existing) {
+        logActivity("excluiu reunião", existing.title)
+      }
     },
-    [mutateMeetings]
+    [meetings, mutateMeetings, logActivity]
   )
 
   const addMeetingHoursToTask = useCallback(
