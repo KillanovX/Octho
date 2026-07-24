@@ -21,6 +21,8 @@ import {
   Pencil,
   Play,
   Building2,
+  Tag as TagIcon,
+  Calendar,
 } from "lucide-react"
 import { Task, ColumnId, Priority, TaskCheckpoint, TaskComment, TaskHistoryEvent, columns } from "@/lib/data"
 import { useApp, UserProfile } from "@/lib/context"
@@ -28,9 +30,11 @@ import { Select, SelectOption } from "@/components/ui/select"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { tagIconMap } from "@/components/tag-manager-modal"
+import { tagIconMap, TagManagerModal } from "@/components/tag-manager-modal"
 import { getStoredClients, saveStoredClient } from "@/lib/clients-service"
 import { getRegisteredUsers } from "@/lib/auth-service"
+import { getStoredTags, saveStoredTags, type TagItem } from "@/lib/tags-service"
+import { cn } from "@/lib/utils"
 
 const priorityOptionsList: SelectOption<Priority>[] = [
   { value: "urgent", label: "Urgente", icon: <AlertTriangle className="size-4 text-destructive shrink-0" /> },
@@ -61,8 +65,17 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
   // New Checkpoint / Comment inputs
   const [newCheckpointText, setNewCheckpointText] = useState("")
   const [newCommentText, setNewCommentText] = useState("")
-  const [logHoursInput, setLogHoursInput] = useState("")
+
+  // Log Hours inputs (date, time, quantity, note)
   const [isLoggingHours, setIsLoggingHours] = useState(false)
+  const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10))
+  const [logTime, setLogTime] = useState(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }))
+  const [logHoursInput, setLogHoursInput] = useState("")
+  const [logNoteInput, setLogNoteInput] = useState("")
+
+  // Tags
+  const [availableTags, setAvailableTags] = useState<TagItem[]>([])
+  const [isTagManagerOpen, setIsTagManagerOpen] = useState(false)
 
   // Users list
   const [allUsers, setAllUsers] = useState<UserProfile[]>([])
@@ -71,7 +84,8 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
     if (task) {
       setTitleText(task.title)
     }
-  }, [task])
+    setAvailableTags(getStoredTags())
+  }, [task, open])
 
   useEffect(() => {
     const map = new Map<string, UserProfile>()
@@ -247,11 +261,31 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
     const val = parseFloat(logHoursInput)
     if (isNaN(val) || val <= 0) return
 
+    const formattedDate = logDate ? logDate.split("-").reverse().join("/") : ""
+    const timeInfo = logTime ? ` às ${logTime}` : ""
+    const noteInfo = logNoteInput.trim() ? ` — ${logNoteInput.trim()}` : ""
+
     const newHours = (task.hoursLogged || 0) + val
-    const updatedHistory = addHistoryEvent(`Registrou +${val}h na tarefa`)
+    const updatedHistory = addHistoryEvent(`Lançou +${val}h (Data: ${formattedDate}${timeInfo})${noteInfo}`)
     updateTask(task.id, { hoursLogged: newHours, history: updatedHistory })
+
     setLogHoursInput("")
+    setLogNoteInput("")
     setIsLoggingHours(false)
+  }
+
+  // ── Tags toggle ──
+
+  const handleToggleTag = (tag: TagItem) => {
+    const currentTags = task.labels || []
+    const exists = currentTags.some((l) => l.name === tag.name)
+    const updatedLabels = exists
+      ? currentTags.filter((l) => l.name !== tag.name)
+      : [...currentTags, { name: tag.name, color: tag.color, icon: tag.icon }]
+
+    const actionText = exists ? `Removeu a tag "${tag.name}"` : `Adicionou a tag "${tag.name}"`
+    const updatedHistory = addHistoryEvent(actionText)
+    updateTask(task.id, { labels: updatedLabels, history: updatedHistory })
   }
 
   return (
@@ -570,44 +604,120 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
                 </div>
               </div>
 
-              {/* Form manual horas */}
+              {/* Form manual horas com Data, Horário e Nota */}
               {isLoggingHours && (
-                <form onSubmit={handleLogHours} className="flex items-center gap-2 pt-2 border-t border-border mt-2 animate-in fade-in">
-                  <Input
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    placeholder="Ex: 2.5h"
-                    value={logHoursInput}
-                    onChange={(e) => setLogHoursInput(e.target.value)}
-                    className="h-8 text-xs rounded-lg flex-1"
-                  />
-                  <Button type="submit" size="sm" className="h-8 text-xs rounded-lg">
-                    Salvar
-                  </Button>
+                <form onSubmit={handleLogHours} className="space-y-3 pt-3 border-t border-border mt-3 animate-in fade-in">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold uppercase text-muted-foreground">Data (Dia)</label>
+                      <input
+                        type="date"
+                        value={logDate}
+                        onChange={(e) => setLogDate(e.target.value)}
+                        required
+                        className="w-full h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold uppercase text-muted-foreground">Horário</label>
+                      <input
+                        type="time"
+                        value={logTime}
+                        onChange={(e) => setLogTime(e.target.value)}
+                        className="w-full h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold uppercase text-muted-foreground">Horas (Horas)</label>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        placeholder="Ex: 2.5"
+                        value={logHoursInput}
+                        onChange={(e) => setLogHoursInput(e.target.value)}
+                        required
+                        className="h-8 text-xs rounded-lg"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold uppercase text-muted-foreground">Descrição (opcional)</label>
+                      <Input
+                        type="text"
+                        placeholder="Ex: Refatoração..."
+                        value={logNoteInput}
+                        onChange={(e) => setLogNoteInput(e.target.value)}
+                        className="h-8 text-xs rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsLoggingHours(false)}
+                      className="h-7 text-[11px] rounded-lg px-2.5"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button type="submit" size="sm" className="h-7 text-[11px] rounded-lg px-3">
+                      Lançar Horas
+                    </Button>
+                  </div>
                 </form>
               )}
             </div>
 
-            {/* Tags */}
-            {task.labels && task.labels.length > 0 && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Tags Atribuídas</label>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {task.labels.map((l) => {
-                    const TagIconComp = tagIconMap[l.icon || "tag"]
-                    return (
-                      <span key={l.name} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border border-border bg-card shadow-2xs">
-                        <span className="flex size-3 items-center justify-center rounded-full text-white" style={{ backgroundColor: l.color }}>
-                          {TagIconComp && <TagIconComp className="size-2 text-white" />}
-                        </span>
-                        {l.name}
-                      </span>
-                    )
-                  })}
-                </div>
+            {/* Tags da Tarefa */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <TagIcon className="size-3.5" />
+                  Tags da Tarefa
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsTagManagerOpen(true)}
+                  className="text-[11px] text-primary hover:underline font-medium"
+                >
+                  Gerenciar Tags
+                </button>
               </div>
-            )}
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {availableTags.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma tag cadastrada.</p>
+                ) : (
+                  availableTags.map((tag) => {
+                    const isSelected = (task.labels || []).some((l) => l.name === tag.name)
+                    const TagIconComp = tagIconMap[tag.icon || "tag"] || TagIcon
+                    return (
+                      <button
+                        key={tag.name}
+                        type="button"
+                        onClick={() => handleToggleTag(tag)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border transition-all duration-150 cursor-pointer select-none",
+                          isSelected
+                            ? "border-transparent text-white shadow-xs"
+                            : "border-border text-muted-foreground hover:text-foreground bg-background hover:bg-muted/50"
+                        )}
+                        style={isSelected ? { backgroundColor: tag.color } : undefined}
+                      >
+                        <TagIconComp className="size-3" style={!isSelected ? { color: tag.color } : undefined} />
+                        {tag.name}
+                        {isSelected && <X className="size-3 ml-0.5 opacity-80" />}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -621,16 +731,29 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
                 onClose()
               }
             }}
-            className="text-xs text-destructive hover:bg-destructive/10 rounded-xl"
+            className="rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive h-9 text-xs"
           >
-            <Trash2 className="size-4 mr-1.5" /> Excluir Tarefa
+            Excluir Tarefa
           </Button>
 
-          <Button onClick={onClose} className="rounded-xl px-6 font-semibold">
-            Concluído
+          <Button onClick={onClose} variant="outline" className="rounded-xl h-9 text-xs">
+            Fechar
           </Button>
         </div>
       </div>
+
+      <TagManagerModal
+        open={isTagManagerOpen}
+        onClose={() => {
+          setIsTagManagerOpen(false)
+          setAvailableTags(getStoredTags())
+        }}
+        tags={availableTags}
+        onUpdateTags={(newTags) => {
+          saveStoredTags(newTags)
+          setAvailableTags(newTags)
+        }}
+      />
     </div>
   )
 }
