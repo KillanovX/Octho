@@ -128,18 +128,6 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
         {/* User Switcher Popover */}
         {showSwitcher && (
           <div className="absolute bottom-14 left-0 right-0 z-50 mb-1 rounded-xl border border-border bg-card p-2 shadow-xl shadow-black/10 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <button
-              onClick={() => {
-                setIsAvatarModalOpen(true)
-                setShowSwitcher(false)
-              }}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-semibold text-primary transition-colors hover:bg-primary/10 mb-1"
-            >
-              <Camera className="size-3.5" />
-              <span>Trocar foto de perfil</span>
-            </button>
-
-            <div className="my-1 border-t border-border" />
 
             {profilesList.length > 1 && (
               <>
@@ -195,8 +183,15 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
           onClick={() => setShowSwitcher(!showSwitcher)}
           className="mt-2 flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-all duration-150 hover:bg-sidebar-accent group"
         >
-          <div className="relative shrink-0">
-            <Avatar className="size-7">
+          <div
+            className="relative shrink-0 cursor-pointer"
+            title="Clique para escolher avatar"
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsAvatarModalOpen(true)
+            }}
+          >
+            <Avatar className="size-7 hover:ring-2 hover:ring-primary/40 transition-all">
               {currentUser?.imageUrl && <AvatarImage src={currentUser.imageUrl} alt={userName} />}
               <AvatarFallback style={{ backgroundColor: avatarColor, color: "#fff" }} className="text-xs font-semibold">
                 {userAvatar}

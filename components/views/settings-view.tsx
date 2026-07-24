@@ -56,7 +56,7 @@ export function SettingsView() {
               </div>
 
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                <div className="relative group cursor-pointer shrink-0" onClick={() => setIsAvatarModalOpen(true)}>
+                <div className="relative group cursor-pointer shrink-0" onClick={() => setIsAvatarModalOpen(true)} title="Clique para escolher avatar">
                   <Avatar className="size-16 border-2 border-primary/30 group-hover:border-primary transition-colors">
                     {userAvatarSrc && <AvatarImage src={userAvatarSrc} alt={currentUser.name} />}
                     <AvatarFallback style={{ backgroundColor: currentUser.avatarColor, color: "#fff" }} className="text-lg font-bold">
@@ -66,20 +66,6 @@ export function SettingsView() {
                   <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 text-white">
                     <Camera className="size-5" />
                   </div>
-                </div>
-
-                <div className="flex flex-col gap-1 shrink-0">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAvatarModalOpen(true)}
-                    className="rounded-xl gap-1.5 text-xs font-semibold"
-                  >
-                    <Camera className="size-3.5 text-primary" />
-                    Trocar Avatar
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground">Clique para escolher entre os avatares Shadcn</p>
                 </div>
 
                 <div className="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">

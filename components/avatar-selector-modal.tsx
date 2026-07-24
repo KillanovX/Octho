@@ -1,10 +1,8 @@
 "use client"
 
-import React, { useState } from "react"
-import { X, Check, Camera, Sparkles } from "lucide-react"
+import React from "react"
+import { X, Check } from "lucide-react"
 import { useApp } from "@/lib/context"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
 import { updateUserAvatarImage } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
@@ -29,16 +27,12 @@ type AvatarSelectorModalProps = {
 export function AvatarSelectorModal({ open, onClose }: AvatarSelectorModalProps) {
   const { currentUser, setCurrentUser } = useApp()
 
-  const [selectedUrl, setSelectedUrl] = useState<string>(
-    currentUser?.imageUrl || "https://images.shadcnspace.com/assets/profiles/user-1.jpg"
-  )
-
   if (!open) return null
 
-  const handleSave = async () => {
+  const handleSelect = async (url: string) => {
     const updatedUser = {
       ...currentUser,
-      imageUrl: selectedUrl,
+      imageUrl: url,
     }
 
     setCurrentUser(updatedUser)
@@ -48,101 +42,61 @@ export function AvatarSelectorModal({ open, onClose }: AvatarSelectorModalProps)
     } catch {}
 
     if (currentUser?.id) {
-      await updateUserAvatarImage(currentUser.id, selectedUrl)
+      await updateUserAvatarImage(currentUser.id, url)
     }
 
     onClose()
   }
 
+  const currentUrl = currentUser?.imageUrl || "https://images.shadcnspace.com/assets/profiles/user-1.jpg"
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-xs rounded-2xl border border-border bg-card p-4 shadow-2xl space-y-3 animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Camera className="size-4.5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground">Escolher Avatar</h3>
-              <p className="text-xs text-muted-foreground">Selecione um dos avatares disponíveis</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between pb-2 border-b border-border">
+          <h3 className="text-sm font-bold text-foreground">Escolher Avatar</h3>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            className="rounded-lg p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
             <X className="size-4" />
           </button>
         </div>
 
-        {/* Preview Atual */}
-        <div className="flex items-center gap-3.5 p-3 rounded-xl border border-border bg-muted/20">
-          <Avatar className="size-14 border border-primary/40 shadow-xs shrink-0">
-            <AvatarImage src={selectedUrl} alt={currentUser?.name} />
-            <AvatarFallback style={{ backgroundColor: currentUser?.avatarColor || "#6366f1", color: "#fff" }} className="text-base font-bold">
-              {currentUser?.avatar || "US"}
-            </AvatarFallback>
-          </Avatar>
-
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-foreground truncate">{currentUser?.name}</p>
-            <p className="text-xs text-muted-foreground truncate">{currentUser?.email}</p>
-            <span className="inline-flex items-center gap-1 mt-0.5 text-[11px] text-primary font-medium">
-              <Sparkles className="size-3" /> Avatar selecionado
-            </span>
-          </div>
-        </div>
-
-        {/* Grade de Avatares */}
-        <div className="grid grid-cols-5 gap-3 max-h-60 overflow-y-auto p-1">
+        <div className="grid grid-cols-5 gap-2.5 pt-1">
           {shadcnAvatars.map((item) => {
-            const isSelected = selectedUrl === item.url
+            const isSelected = currentUrl === item.url
             return (
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setSelectedUrl(item.url)}
+                onClick={() => handleSelect(item.url)}
                 className={cn(
-                  "relative flex items-center justify-center rounded-2xl p-1.5 transition-all duration-75 outline-none",
+                  "relative size-12 rounded-full border-2 transition-all p-0.5 overflow-hidden outline-none",
                   isSelected
-                    ? "bg-primary/15 ring-2 ring-primary"
-                    : "hover:bg-accent/60"
+                    ? "border-primary ring-2 ring-primary/30"
+                    : "border-transparent hover:border-primary/50"
                 )}
               >
-                <div className="relative size-12 overflow-hidden rounded-full border border-border/80">
-                  <img
-                    src={item.url}
-                    alt={item.name}
-                    className="size-full object-cover"
-                  />
-                </div>
-
+                <img
+                  src={item.url}
+                  alt={item.name}
+                  className="size-full rounded-full object-cover"
+                />
                 {isSelected && (
-                  <span className="absolute -top-1 -right-1 flex size-4.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs">
-                    <Check className="size-3" />
+                  <span className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full text-white">
+                    <Check className="size-4" />
                   </span>
                 )}
               </button>
             )
           })}
-        </div>
-
-        {/* Ações */}
-        <div className="flex justify-end gap-2 pt-2 border-t border-border">
-          <Button variant="outline" onClick={onClose} className="rounded-xl h-9 text-xs">
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} className="rounded-xl h-9 text-xs gap-1.5">
-            <Check className="size-4" />
-            Salvar Avatar
-          </Button>
         </div>
       </div>
     </div>
