@@ -23,6 +23,7 @@ import { SettingsView } from "@/components/views/settings-view"
 import { AdminView } from "@/components/views/admin-view"
 import { MeetingsView } from "@/components/views/meetings-view"
 
+import Image from "next/image"
 import SignInForm from "@/components/ui/sign-in-form"
 import { BeamsBackground } from "@/components/ui/beams-background"
 
@@ -97,13 +98,34 @@ function MyTasksView() {
 }
 
 export default function Page() {
-  const { activeView, isAuthenticated, isAuthModalOpen, closeAuthModal } = useApp()
+  const { activeView, isAuthenticated, isAuthLoading, isAuthModalOpen, closeAuthModal } = useApp()
   const [searchOpen, setSearchOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
 
   const handleSelectTask = (task: Task) => {
     setSearchOpen(false)
     setEditTask(task)
+  }
+
+  if (isAuthLoading && !isAuthenticated) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#090D16]">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0050D7] via-[#0F6FFF] to-[#5EC9FF] p-3 shadow-2xl">
+            <Image
+              src="/branding/symbol/octho-symbol-white-512.png"
+              alt="Octho"
+              width={40}
+              height={40}
+              className="object-contain"
+            />
+          </div>
+          <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted/20">
+            <div className="h-full w-full bg-primary animate-pulse" />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!isAuthenticated || activeView === "login") {

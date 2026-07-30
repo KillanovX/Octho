@@ -62,6 +62,7 @@ type AppContextType = {
   closeAuthModal: () => void
   signOut: () => Promise<void>
   isSupabaseActive: boolean
+  isAuthLoading: boolean
   // View
   activeView: ViewId
   setActiveView: (view: ViewId) => void
@@ -356,19 +357,39 @@ async function loadEventsFromSupabase(): Promise<(ActivityEvent & { createdAt: n
   }
 }
 
+function getInitialUser(): UserProfile | null {
+  if (typeof window === "undefined") return null
+  try {
+    const savedUserStr = localStorage.getItem("octho_user")
+    if (savedUserStr) {
+      const savedUser = JSON.parse(savedUserStr)
+      if (savedUser && savedUser.id) {
+        return savedUser
+      }
+    }
+  } catch {}
+  return null
+}
+
 // ─── Provider ───────────────────────────────────────────────
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUserVal] = useState<UserProfile>({
-    id: "",
-    name: "",
-    email: "",
-    avatar: "",
-    avatarColor: "#6366f1",
+  const [currentUser, setCurrentUserVal] = useState<UserProfile>(() => {
+    return getInitialUser() || { id: "", name: "", email: "", avatar: "", avatarColor: "#6366f1" }
   })
-  const [profilesList, setProfilesList] = useState<UserProfile[]>([])
-  const [activeView, setActiveView] = useState<ViewId>("login")
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [profilesList, setProfilesList] = useState<UserProfile[]>(() => {
+    const init = getInitialUser()
+    return init ? [init] : []
+  })
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const init = getInitialUser()
+    return !!(init && init.id)
+  })
+  const [activeView, setActiveView] = useState<ViewId>(() => {
+    const init = getInitialUser()
+    return init && init.id ? "dashboard" : "login"
+  })
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false)
 
   const [usersStore, setUsersStore] = useState<Record<string, UserData>>({})
 
@@ -436,59 +457,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.error("Error restoring session:", e)
     }
 
-    if (supabase) {
-      supabase.auth.getSession().then(async ({ data: { session } }) => {
-        if (session?.user) {
-          const u = session.user
-          const profile = await getUserProfile(u.id)
-          const name = profile?.name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário"
-          const avatar = (profile?.avatar || u.user_metadata?.avatar || name.slice(0, 2)).toUpperCase()
-          const userObj: UserProfile = {
-            id: u.id,
-            name,
-            email: u.email || "",
-            avatar,
-            avatarColor: profile?.avatar_color || "#6366f1",
-            verified: true,
+      if (supabase) {
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
+          if (session?.user) {
+            const u = session.user
+            const profile = await getUserProfile(u.id)
+            const name = profile?.name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário"
+            const avatar = (profile?.avatar || u.user_metadata?.avatar || name.slice(0, 2)).toUpperCase()
+            const userObj: UserProfile = {
+              id: u.id,
+              name,
+              email: u.email || "",
+              avatar,
+              avatarColor: profile?.avatar_color || "#6366f1",
+              verified: true,
+            }
+            setCurrentUserVal(userObj)
+            setProfilesList((prev) => (prev.some((p) => p.id === userObj.id) ? prev : [...prev, userObj]))
+            setIsAuthenticated(true)
+            setActiveView("dashboard")
+            try {
+              localStorage.setItem("octho_user", JSON.stringify(userObj))
+            } catch {}
           }
-          setCurrentUserVal(userObj)
-          setProfilesList((prev) => (prev.some((p) => p.id === userObj.id) ? prev : [...prev, userObj]))
-          setIsAuthenticated(true)
-          setActiveView("dashboard")
-          try {
-            localStorage.setItem("octho_user", JSON.stringify(userObj))
-          } catch {}
-        }
-      })
+          setIsAuthLoading(false)
+        }).catch(() => {
+          setIsAuthLoading(false)
+        })
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (session?.user) {
-          const u = session.user
-          const profile = await getUserProfile(u.id)
-          const name = profile?.name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário"
-          const avatar = (profile?.avatar || u.user_metadata?.avatar || name.slice(0, 2)).toUpperCase()
-          const userObj: UserProfile = {
-            id: u.id,
-            name,
-            email: u.email || "",
-            avatar,
-            avatarColor: profile?.avatar_color || "#6366f1",
-            verified: true,
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (session?.user) {
+            const u = session.user
+            const profile = await getUserProfile(u.id)
+            const name = profile?.name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário"
+            const avatar = (profile?.avatar || u.user_metadata?.avatar || name.slice(0, 2)).toUpperCase()
+            const userObj: UserProfile = {
+              id: u.id,
+              name,
+              email: u.email || "",
+              avatar,
+              avatarColor: profile?.avatar_color || "#6366f1",
+              verified: true,
+            }
+            setCurrentUserVal(userObj)
+            setProfilesList((prev) => (prev.some((p) => p.id === userObj.id) ? prev : [...prev, userObj]))
+            setIsAuthenticated(true)
+            setActiveView("dashboard")
+            try {
+              localStorage.setItem("octho_user", JSON.stringify(userObj))
+            } catch {}
           }
-          setCurrentUserVal(userObj)
-          setProfilesList((prev) => (prev.some((p) => p.id === userObj.id) ? prev : [...prev, userObj]))
-          setIsAuthenticated(true)
-          setActiveView("dashboard")
-          try {
-            localStorage.setItem("octho_user", JSON.stringify(userObj))
-          } catch {}
-        }
-      })
+          setIsAuthLoading(false)
+        })
 
-      return () => {
-        subscription.unsubscribe()
+        return () => {
+          subscription.unsubscribe()
+        }
+      } else {
+        setIsAuthLoading(false)
       }
-    }
   }, [])
 
   const login = useCallback((user: UserProfile) => {
@@ -867,11 +894,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       markAllRead,
       hoursMonth,
       completedTasksMonth,
+      // Meetings
       meetings,
       addMeeting,
       updateMeeting,
       deleteMeeting,
       addMeetingHoursToTask,
+      isAuthLoading,
     }),
     [
       currentUser,
