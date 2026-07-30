@@ -709,10 +709,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const moveTask = useCallback(
     (id: string, column: ColumnId, overTaskId?: string) => {
-      if (!currentUser.id) return
-      const task = userData.tasks.find((t) => t.id === id)
+      const pid = currentUser.id || "MA"
+      const task = rawUserData.tasks.find((t) => t.id === id)
       if (!task) return
       const colName = columns.find((c) => c.id === column)?.name ?? column
+
+      let updatedTaskToSave: Task | null = null
 
       mutateData((prev) => {
         const activeTask = prev.tasks.find((t) => t.id === id)
@@ -729,10 +731,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
 
         const updatedTask = { ...activeTask, column }
+        updatedTaskToSave = updatedTask
         const newTasks = [...cleanTasks]
         newTasks.splice(insertIndex, 0, updatedTask)
-
-        saveTaskToSupabase(currentUser.id, updatedTask)
 
         return {
           ...prev,
@@ -740,13 +741,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       })
 
+      if (updatedTaskToSave) {
+        saveTaskToSupabase(pid, updatedTaskToSave)
+      }
+
       if (task.column !== column) {
         logActivity(`moveu para ${colName}`, `${task.code} — ${task.title}`)
       } else {
         logActivity(`reordenou`, `${task.code} — ${task.title}`)
       }
     },
-    [currentUser.id, mutateData, logActivity, userData.tasks]
+    [currentUser.id, mutateData, logActivity, rawUserData.tasks]
   )
 
   // ── Timer ──
