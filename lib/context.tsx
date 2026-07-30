@@ -95,11 +95,24 @@ type AppContextType = {
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
+// ─── Helper: UUID Validator ───────────────────────────────────
+function isValidUUID(str?: string | null): boolean {
+  if (!str) return false
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+}
+
 // ─── Helper: generate task code ─────────────────────────────
-let codeCounter = 300
-function nextCode(): string {
-  codeCounter++
-  return `OCT-${codeCounter}`
+function nextCode(tasks: Task[] = []): string {
+  let maxNum = 300
+  tasks.forEach((t) => {
+    if (t.code && t.code.startsWith("OCT-")) {
+      const num = parseInt(t.code.replace("OCT-", ""), 10)
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num
+      }
+    }
+  })
+  return `OCT-${maxNum + 1}`
 }
 
 // ─── Helper: time-ago formatter ─────────────────────────────
@@ -138,13 +151,13 @@ function buildDefaultUserData(): UserData {
 }
 
 // ─── Supabase Sync ──────────────────────────────────────────
-async function loadTasksFromSupabase(profileId: string): Promise<Task[] | null> {
-  if (!isSupabaseConfigured() || !supabase || !profileId) return null
+// ─── Supabase Sync ──────────────────────────────────────────
+async function loadTasksFromSupabase(): Promise<Task[] | null> {
+  if (!isSupabaseConfigured() || !supabase) return null
   try {
     const { data, error } = await supabase
       .from("tasks")
       .select("*")
-      .or(`user_id.eq.${profileId},profile_id.eq.${profileId}`)
       .order("created_at", { ascending: true })
     if (error) {
       console.error("Supabase load tasks error:", error)
@@ -170,47 +183,53 @@ async function loadTasksFromSupabase(profileId: string): Promise<Task[] | null> 
       comments: (row.comments as TaskComment[]) || [],
       history: (row.history as TaskHistoryEvent[]) || [],
     }))
-  } catch {
+  } catch (e) {
+    console.error("Supabase load tasks exception:", e)
     return null
   }
 }
 
 async function saveTaskToSupabase(profileId: string, task: Task) {
-  if (!isSupabaseConfigured() || !supabase || !profileId) return
+  if (!isSupabaseConfigured() || !supabase) return
+  const safeProfileId = profileId || "MA"
+  const safeUserId = isValidUUID(profileId) ? profileId : null
+
   try {
-    await supabase.from("tasks").upsert({
+    const { error } = await supabase.from("tasks").upsert({
       id: task.id,
-      profile_id: profileId,
-      user_id: profileId.length > 5 ? profileId : null,
+      profile_id: safeProfileId,
+      user_id: safeUserId,
       code: task.code,
       title: task.title,
       column: task.column,
       priority: task.priority,
-      labels: task.labels,
+      labels: task.labels || [],
       client: task.client || null,
-      assignee: task.assignee,
+      assignee: task.assignee || "",
       assignee_name: task.assigneeName || null,
       assignee_avatar: task.assigneeAvatar || null,
-      assignee_color: task.assigneeColor,
-      hours_logged: task.hoursLogged,
-      estimate: task.estimate,
+      assignee_color: task.assigneeColor || "#888",
+      hours_logged: task.hoursLogged || 0,
+      estimate: task.estimate || 0,
       description: task.description || null,
       checkpoints: task.checkpoints || [],
       comments: task.comments || [],
       history: task.history || [],
     })
+    if (error) {
+      console.error("Supabase save task error:", error)
+    }
   } catch (e) {
-    console.error("Supabase save task error:", e)
+    console.error("Supabase save task exception:", e)
   }
 }
 
-async function loadMeetingsFromSupabase(profileId: string): Promise<Meeting[] | null> {
-  if (!isSupabaseConfigured() || !supabase || !profileId) return null
+async function loadMeetingsFromSupabase(): Promise<Meeting[] | null> {
+  if (!isSupabaseConfigured() || !supabase) return null
   try {
     const { data, error } = await supabase
       .from("meetings")
       .select("*")
-      .or(`user_id.eq.${profileId},profile_id.eq.${profileId}`)
       .order("date", { ascending: false })
     if (error) {
       console.error("Supabase load meetings error:", error)
@@ -238,12 +257,15 @@ async function loadMeetingsFromSupabase(profileId: string): Promise<Meeting[] | 
 }
 
 async function saveMeetingToSupabase(profileId: string, m: Meeting) {
-  if (!isSupabaseConfigured() || !supabase || !profileId) return
+  if (!isSupabaseConfigured() || !supabase) return
+  const safeProfileId = profileId || "MA"
+  const safeUserId = isValidUUID(profileId) ? profileId : null
+
   try {
-    await supabase.from("meetings").upsert({
+    const { error } = await supabase.from("meetings").upsert({
       id: m.id,
-      profile_id: profileId,
-      user_id: profileId.length > 5 ? profileId : null,
+      profile_id: safeProfileId,
+      user_id: safeUserId,
       title: m.title,
       date: m.date,
       start_time: m.startTime || null,
@@ -257,8 +279,11 @@ async function saveMeetingToSupabase(profileId: string, m: Meeting) {
       status: m.status,
       hours_added_to_task: m.hoursAddedToTask || false,
     })
+    if (error) {
+      console.error("Supabase save meeting error:", error)
+    }
   } catch (e) {
-    console.error("Supabase save meeting error:", e)
+    console.error("Supabase save meeting exception:", e)
   }
 }
 
@@ -281,30 +306,35 @@ async function deleteTaskFromSupabase(taskId: string) {
 }
 
 async function saveActivityToSupabase(profileId: string, event: ActivityEvent & { createdAt: number }) {
-  if (!isSupabaseConfigured() || !supabase || !profileId) return
+  if (!isSupabaseConfigured() || !supabase) return
+  const safeProfileId = profileId || "MA"
+  const safeUserId = isValidUUID(profileId) ? profileId : null
+
   try {
-    await supabase.from("activity_events").insert({
+    const { error } = await supabase.from("activity_events").insert({
       id: event.id,
-      profile_id: profileId,
-      user_id: profileId.length > 5 ? profileId : null,
+      profile_id: safeProfileId,
+      user_id: safeUserId,
       user_initials: event.user,
       user_color: event.userColor,
       action: event.action,
       target: event.target,
       created_at: new Date(event.createdAt).toISOString(),
     })
+    if (error) {
+      console.error("Supabase save event error:", error)
+    }
   } catch (e) {
-    console.error("Supabase save event error:", e)
+    console.error("Supabase save event exception:", e)
   }
 }
 
-async function loadEventsFromSupabase(profileId: string): Promise<(ActivityEvent & { createdAt: number })[] | null> {
-  if (!isSupabaseConfigured() || !supabase || !profileId) return null
+async function loadEventsFromSupabase(): Promise<(ActivityEvent & { createdAt: number })[] | null> {
+  if (!isSupabaseConfigured() || !supabase) return null
   try {
     const { data, error } = await supabase
       .from("activity_events")
       .select("*")
-      .or(`user_id.eq.${profileId},profile_id.eq.${profileId}`)
       .order("created_at", { ascending: false })
       .limit(50)
     if (error) {
@@ -481,19 +511,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ── Load from Supabase on user switch ──
   useEffect(() => {
-    const pid = currentUser.id
-    if (!pid || supabaseLoaded[pid]) return
+    const pid = currentUser.id || "guest"
+    if (supabaseLoaded[pid]) return
     const load = async () => {
-      const tasks = await loadTasksFromSupabase(pid)
-      const events = await loadEventsFromSupabase(pid)
-      const dbMeetings = await loadMeetingsFromSupabase(pid)
+      const tasks = await loadTasksFromSupabase()
+      const events = await loadEventsFromSupabase()
+      const dbMeetings = await loadMeetingsFromSupabase()
 
       if (tasks !== null || events !== null) {
         setUsersStore((prev) => {
           const existing = prev[pid] || buildDefaultUserData()
+
+          const taskMap = new Map<string, Task>()
+          ;(existing.tasks || []).forEach((t) => taskMap.set(t.id, t))
+          if (tasks !== null) {
+            tasks.forEach((t) => taskMap.set(t.id, t))
+          }
+          const mergedTasks = Array.from(taskMap.values())
+
           const updated = {
             ...existing,
-            ...(tasks !== null ? { tasks } : {}),
+            tasks: mergedTasks,
             ...(events !== null ? { activityFeed: events } : {}),
           }
           try {
@@ -600,18 +638,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addTask = useCallback(
     (taskData: Omit<Task, "id" | "code">) => {
-      if (!currentUser.id) return
-      const task: Task = { ...taskData, id: crypto.randomUUID(), code: nextCode() }
+      const pid = currentUser.id || "MA"
+      const currentTasks = rawUserData.tasks || []
+      const taskCode = nextCode(currentTasks)
+      const task: Task = { ...taskData, id: crypto.randomUUID(), code: taskCode }
       mutateData((prev) => ({ ...prev, tasks: [...prev.tasks, task] }))
       logActivity("criou", `${task.code} — ${task.title}`)
-      saveTaskToSupabase(currentUser.id, task)
+      saveTaskToSupabase(pid, task)
     },
-    [currentUser.id, mutateData, logActivity]
+    [currentUser.id, rawUserData.tasks, mutateData, logActivity]
   )
 
   const updateTask = useCallback(
     (id: string, updates: Partial<Task>) => {
-      if (!currentUser.id) return
+      const pid = currentUser.id || "MA"
       mutateData((prev) => ({
         ...prev,
         tasks: prev.tasks.map((t) => {
@@ -619,26 +659,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return { ...t, ...updates }
         }),
       }))
-      const task = userData.tasks.find((t) => t.id === id)
+      const task = rawUserData.tasks.find((t) => t.id === id)
       if (task) {
         logActivity("editou", `${task.code} — ${task.title}`)
-        saveTaskToSupabase(currentUser.id, { ...task, ...updates })
+        saveTaskToSupabase(pid, { ...task, ...updates })
       }
     },
-    [currentUser.id, mutateData, logActivity, userData.tasks]
+    [currentUser.id, mutateData, logActivity, rawUserData.tasks]
   )
 
   const deleteTask = useCallback(
     (id: string) => {
-      if (!currentUser.id) return
-      const task = userData.tasks.find((t) => t.id === id)
       mutateData((prev) => ({ ...prev, tasks: prev.tasks.filter((t) => t.id !== id) }))
+      const task = rawUserData.tasks.find((t) => t.id === id)
       if (task) {
         logActivity("excluiu", `${task.code} — ${task.title}`)
         deleteTaskFromSupabase(id)
       }
     },
-    [currentUser.id, mutateData, logActivity, userData.tasks]
+    [mutateData, logActivity, rawUserData.tasks]
   )
 
   const moveTask = useCallback(
@@ -728,9 +767,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ? "cancelou reunião"
           : "agendou reunião"
       logActivity(actionLabel, newMeeting.title)
+      saveMeetingToSupabase(currentUser.id || "MA", newMeeting)
       return newMeeting
     },
-    [mutateMeetings, logActivity]
+    [currentUser.id, mutateMeetings, logActivity]
   )
 
   const updateMeeting = useCallback(
@@ -739,6 +779,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       mutateMeetings((prev) => prev.map((m) => (m.id === id ? { ...m, ...updates } : m)))
       if (existing) {
         const title = updates.title ?? existing.title
+        saveMeetingToSupabase(currentUser.id || "MA", { ...existing, ...updates })
         if (updates.status && updates.status !== existing.status) {
           const actionLabel =
             updates.status === "completed"
@@ -750,7 +791,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [meetings, mutateMeetings, logActivity]
+    [currentUser.id, meetings, mutateMeetings, logActivity]
   )
 
   const deleteMeeting = useCallback(
@@ -759,6 +800,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       mutateMeetings((prev) => prev.filter((m) => m.id !== id))
       if (existing) {
         logActivity("excluiu reunião", existing.title)
+        deleteMeetingFromSupabase(id)
       }
     },
     [meetings, mutateMeetings, logActivity]
