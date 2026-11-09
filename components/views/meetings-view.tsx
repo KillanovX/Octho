@@ -77,7 +77,7 @@ function MeetingForm({
   onSave: (m: Omit<Meeting, "id">) => void
   onCancel: () => void
 }) {
-  const { userData } = useApp()
+  const { userData, reportError } = useApp()
   const activeTasks = userData.tasks.filter((t) => t.column !== "done")
 
   const [title, setTitle]               = useState(initial?.title ?? "")
@@ -108,7 +108,7 @@ function MeetingForm({
     if (!title.trim()) return
     const linkedTask = activeTasks.find((t) => t.id === linkedTaskId)
     const cleanClient = client.trim() || undefined
-    if (cleanClient) saveStoredClient(cleanClient)
+    if (cleanClient) saveStoredClient(cleanClient).catch((e: Error) => reportError(e.message))
     onSave({
       title: title.trim(),
       date,

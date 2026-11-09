@@ -41,7 +41,7 @@ const workspace: NavDef[] = [
 ]
 
 export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
-  const { activeView, setActiveView, currentUser, setCurrentUser, profilesList, unreadCount, openAuthModal, signOut } = useApp()
+  const { activeView, setActiveView, currentUser, unreadCount, signOut, isAdmin } = useApp()
   const [showSwitcher, setShowSwitcher] = useState(false)
 
   const userName = currentUser?.name || "Usuário"
@@ -51,7 +51,6 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
 
-  const isSuperAdmin = currentUser?.email?.toLowerCase() === "flavio.adsv@gmail.com"
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 lg:flex">
@@ -106,7 +105,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
             onClick={() => setActiveView(item.view)}
           />
         ))}
-        {isSuperAdmin && (
+        {isAdmin && (
           <NavItem
             icon={ShieldCheck}
             label="Administração"
@@ -125,46 +124,9 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
           onClick={() => setActiveView("settings")}
         />
 
-        {/* User Switcher Popover */}
+        {/* Menu da conta */}
         {showSwitcher && (
           <div className="absolute bottom-14 left-0 right-0 z-50 mb-1 rounded-xl border border-border bg-card p-2 shadow-xl shadow-black/10 animate-in fade-in slide-in-from-bottom-2 duration-200">
-
-            {profilesList.length > 1 && (
-              <>
-                <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Seus Perfis
-                </p>
-                <div className="flex flex-col gap-0.5 max-h-56 overflow-y-auto">
-                  {profilesList.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => {
-                        setCurrentUser(u)
-                        setShowSwitcher(false)
-                      }}
-                      className={cn(
-                        "flex items-center gap-2.5 rounded-lg px-2 py-2 text-left text-xs transition-all duration-150 hover:bg-sidebar-accent",
-                        currentUser.id === u.id && "bg-sidebar-accent font-medium"
-                      )}
-                    >
-                      <div className="relative shrink-0">
-                        <Avatar className="size-6">
-                          {u.imageUrl && <AvatarImage src={u.imageUrl} alt={u.name} />}
-                          <AvatarFallback style={{ backgroundColor: u.avatarColor, color: "#fff" }} className="text-[10px] font-semibold">
-                            {u.avatar}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                      <div className="min-w-0 flex-1 text-left">
-                        <p className="truncate font-medium text-foreground">{u.name}</p>
-                        <p className="truncate text-[10px] text-muted-foreground">{u.role || u.email}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                <div className="my-1.5 border-t border-border" />
-              </>
-            )}
 
             <button
               onClick={() => {

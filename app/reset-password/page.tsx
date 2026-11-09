@@ -1,76 +1,78 @@
 "use client"
 
-import { useState, Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Lock, AlertCircle, CheckCircle2 } from "lucide-react"
 import { BeamsBackground } from "@/components/ui/beams-background"
-import { updateUserPassword } from "@/lib/auth-service"
+import { supabase } from "@/lib/supabase"
 
+// O link do e-mail é gerado pelo Supabase Auth (resetPasswordForEmail). Ao abrir esta página, o SDK
+// valida o token da URL e cria uma sessão de recuperação; só então a senha pode ser trocada.
 function ResetPasswordForm() {
-  const searchParams = useSearchParams()
   const router = useRouter()
 
-  const email = searchParams.get("email") || ""
-  const token = searchParams.get("token") || ""
-
+  const [email, setEmail] = useState("")
+  const [linkState, setLinkState] = useState<"checking" | "valid" | "invalid">("checking")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
+  useEffect(() => {
+    const client = supabase
+    if (!client) {
+      setLinkState("invalid")
+      return
+    }
+    const markValid = (userEmail?: string) => {
+      setEmail(userEmail ?? "")
+      setLinkState("valid")
+    }
+    const { data } = client.auth.onAuthStateChange((event, session) => {
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) markValid(session.user.email)
+    })
+    // Fallback: se o evento já ocorreu antes da inscrição, a sessão existe
+    const timeout = setTimeout(async () => {
+      const { data: s } = await client.auth.getSession()
+      if (s.session) markValid(s.session.user.email)
+      else setLinkState((cur) => (cur === "checking" ? "invalid" : cur))
+    }, 1500)
+    return () => {
+      data.subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg(null)
     setSuccessMsg(null)
 
-    if (!password || !confirmPassword) {
-      setErrorMsg("Por favor, preencha ambos os campos de senha.")
+    if (password.length < 8) {
+      setErrorMsg("A nova senha deve ter no mínimo 8 caracteres.")
       return
     }
-
-    if (password.length < 6) {
-      setErrorMsg("A nova senha deve ter no mínimo 6 caracteres.")
-      return
-    }
-
     if (password !== confirmPassword) {
       setErrorMsg("As senhas não coincidem. Digite novamente.")
       return
     }
+    if (!supabase) return
 
     setLoading(true)
-
-    const targetEmail = email || "sua conta"
-
-    try {
-      // 1. Sync & update password directly in Supabase Auth via server API
-      await fetch("/api/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: targetEmail, password }),
-      })
-    } catch (err) {
-      console.error("Supabase password sync error:", err)
-    }
-
-    // 2. Sync local user credentials
-    const res = updateUserPassword(targetEmail, password)
-
+    const { error } = await supabase.auth.updateUser({ password })
     setLoading(false)
 
-    if (res.success) {
-      setSuccessMsg("Senha atualizada no Supabase com sucesso! Redirecionando para o login...")
-      setTimeout(() => {
-        router.push("/login")
-      }, 2000)
-    } else {
-      setErrorMsg(res.error || "Não foi possível atualizar a senha. Tente novamente.")
+    if (error) {
+      setErrorMsg(error.message || "Não foi possível atualizar a senha. Solicite um novo link.")
+      return
     }
+    setSuccessMsg("Senha atualizada com sucesso! Redirecionando...")
+    setTimeout(() => router.push("/"), 1500)
   }
 
   return (
@@ -109,15 +111,31 @@ function ResetPasswordForm() {
             </div>
           )}
 
+          {linkState === "checking" && (
+            <p className="text-center text-sm text-muted-foreground">Validando link...</p>
+          )}
+
+          {linkState === "invalid" && (
+            <div className="flex flex-col items-center gap-3 text-center">
+              <p className="text-sm text-muted-foreground">
+                Link inválido ou expirado. Volte ao login e use &quot;Esqueceu a senha?&quot; para receber um novo.
+              </p>
+              <Button variant="outline" onClick={() => router.push("/")}>
+                Ir para o login
+              </Button>
+            </div>
+          )}
+
+          {linkState === "valid" && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* New Password */}
             <div className="flex items-center gap-2 border rounded-lg px-3 h-12 focus-within:ring-2 focus-within:ring-ring">
               <Lock className="h-5 w-5 text-muted-foreground" />
               <Input
                 type="password"
-                placeholder="Nova Senha (min. 6 caracteres)"
+                placeholder="Nova senha (mín. 8 caracteres)"
                 required
-                minLength={6}
+                minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="border-0 shadow-none focus-visible:ring-0"
@@ -131,7 +149,7 @@ function ResetPasswordForm() {
                 type="password"
                 placeholder="Confirmar Nova Senha"
                 required
-                minLength={6}
+                minLength={8}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="border-0 shadow-none focus-visible:ring-0"
@@ -148,6 +166,7 @@ function ResetPasswordForm() {
               {loading ? "Salvando..." : "Salvar Nova Senha"}
             </Button>
           </form>
+          )}
         </CardContent>
       </Card>
     </div>

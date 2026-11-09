@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   ShieldCheck,
   UserPlus,
@@ -19,21 +19,32 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import {
-  getRegisteredUsers,
-  registerUserAccount,
-  updateUserPassword,
-  updateUserProfile,
-  deleteUserAccount,
-  type RegisteredUser,
-} from "@/lib/auth-service"
-import { useApp } from "@/lib/context"
+import { useApp, type UserRole } from "@/lib/context"
+import { authFetch } from "@/lib/supabase"
 
-import { getAllSupabaseProfiles } from "@/lib/supabase"
+type AdminUser = {
+  id: string
+  name: string
+  email: string
+  avatar: string
+  avatarColor: string
+  role: UserRole
+  createdAt: number
+}
+
+const roleLabel: Record<UserRole, string> = { admin: "Administrador", member: "Membro", pending: "Pendente" }
+
+/** Chama /api/admin/users com o token da sessão; a rota confere o papel admin no servidor. */
+async function adminCall(body?: Record<string, unknown>) {
+  const res = await authFetch("/api/admin/users", body ? { method: "POST", body: JSON.stringify(body) } : {})
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || `Erro ${res.status}`)
+  return data
+}
 
 export function AdminView() {
-  const { currentUser, profilesList, addProfile } = useApp()
-  const [usersList, setUsersList] = useState<RegisteredUser[]>([])
+  const { currentUser, refreshData } = useApp()
+  const [usersList, setUsersList] = useState<AdminUser[]>([])
   const [searchTerm, setSearchTerm] = useState("")
 
   // Feedback Messages
@@ -47,7 +58,7 @@ export function AdminView() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   // Target User for Action
-  const [selectedUser, setSelectedUser] = useState<RegisteredUser | null>(null)
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
 
   // Form Fields
   const [formName, setFormName] = useState("")
@@ -55,64 +66,28 @@ export function AdminView() {
   const [formPassword, setFormPassword] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const reloadUsers = async () => {
-    const localUsers = getRegisteredUsers()
-    const map = new Map<string, RegisteredUser>()
-
-    // 1. Add Super Admin
-    map.set("flavio.adsv@gmail.com", {
-      id: "usr_super_admin",
-      name: currentUser.email?.toLowerCase() === "flavio.adsv@gmail.com" ? currentUser.name || "Flavio Alves" : "Flavio Alves",
-      email: "flavio.adsv@gmail.com",
-      passwordHash: "••••••••",
-      avatar: "FA",
-      avatarColor: "#0F6FFF",
-      createdAt: Date.now(),
-    })
-
-    // 2. Add local storage users
-    localUsers.forEach((u) => {
-      if (u.email) map.set(u.email.toLowerCase(), u)
-    })
-
-    // 3. Add profilesList from context
-    profilesList.forEach((p) => {
-      if (p.email && !map.has(p.email.toLowerCase())) {
-        map.set(p.email.toLowerCase(), {
-          id: p.id,
-          name: p.name,
-          email: p.email,
-          passwordHash: "••••••••",
-          avatar: p.avatar,
-          avatarColor: p.avatarColor || "#6366f1",
-          createdAt: Date.now(),
-        })
-      }
-    })
-
-    // 4. Fetch Supabase profiles if configured
-    const supaProfiles = await getAllSupabaseProfiles()
-    supaProfiles.forEach((sp: any) => {
-      const email = sp.email || sp.name
-      if (email && email.includes("@") && !map.has(email.toLowerCase())) {
-        map.set(email.toLowerCase(), {
-          id: sp.id,
-          name: sp.name || email.split("@")[0],
-          email: email.toLowerCase(),
-          passwordHash: "••••••••",
-          avatar: sp.avatar || (sp.name ? sp.name.slice(0, 2).toUpperCase() : "US"),
-          avatarColor: sp.avatar_color || "#6366f1",
-          createdAt: sp.created_at ? new Date(sp.created_at).getTime() : Date.now(),
-        })
-      }
-    })
-
-    setUsersList(Array.from(map.values()))
-  }
+  const reloadUsers = useCallback(async () => {
+    try {
+      const data = await adminCall()
+      setUsersList(
+        (data.users ?? []).map((u: Record<string, string>) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          avatar: u.avatar || u.name.slice(0, 2).toUpperCase(),
+          avatarColor: u.avatar_color || "#6366f1",
+          role: (u.role as UserRole) || "pending",
+          createdAt: u.created_at ? new Date(u.created_at).getTime() : 0,
+        }))
+      )
+    } catch (e) {
+      setErrorMsg((e as Error).message)
+    }
+  }, [])
 
   useEffect(() => {
     reloadUsers()
-  }, [])
+  }, [reloadUsers])
 
   const filteredUsers = usersList.filter(
     (u) =>
@@ -120,145 +95,72 @@ export function AdminView() {
       u.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  /** Executa uma ação de admin com feedback e recarrega a lista. */
+  const run = async (body: Record<string, unknown>, success: string, after?: () => void) => {
+    setErrorMsg(null)
+    setSuccessMsg(null)
+    setLoading(true)
+    try {
+      await adminCall(body)
+      setSuccessMsg(success)
+      after?.()
+      await reloadUsers()
+      refreshData()
+    } catch (e) {
+      setErrorMsg((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // ── Actions ──────────────────────────────────────────────────
 
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault()
-    setErrorMsg(null)
-    setSuccessMsg(null)
-
-    if (!formName.trim() || !formEmail.trim() || !formPassword.trim()) {
-      setErrorMsg("Preencha todos os campos obrigatórios.")
+    if (formPassword.length < 8) {
+      setErrorMsg("A senha deve ter no mínimo 8 caracteres.")
       return
     }
-
-    if (formPassword.length < 6) {
-      setErrorMsg("A senha deve ter no mínimo 6 caracteres.")
-      return
-    }
-
-    setLoading(true)
-    const res = registerUserAccount(formName.trim(), formEmail.trim(), formPassword.trim())
-    setLoading(false)
-
-    if (res.error) {
-      setErrorMsg(res.error)
-    } else if (res.user) {
-      addProfile(res.user)
-      setSuccessMsg(`Usuário ${res.user.name} cadastrado com sucesso!`)
-      setIsAddModalOpen(false)
-      setFormName("")
-      setFormEmail("")
-      setFormPassword("")
-      reloadUsers()
-    }
+    run(
+      { action: "create", name: formName.trim(), email: formEmail.trim(), password: formPassword, role: "member" },
+      `Usuário ${formName.trim()} cadastrado com sucesso.`,
+      () => {
+        setIsAddModalOpen(false)
+        setFormName("")
+        setFormEmail("")
+        setFormPassword("")
+      }
+    )
   }
 
-  const handleEditUser = async (e: React.FormEvent) => {
+  const handleEditUser = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedUser || !formName.trim()) return
-    setErrorMsg(null)
-    setSuccessMsg(null)
-
-    setLoading(true)
-
-    // 1. Sync update to Supabase
-    try {
-      await fetch("/api/admin-user-action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "update-name", email: selectedUser.email, name: formName.trim() }),
-      })
-    } catch (err) {
-      console.error("Supabase user update error:", err)
-    }
-
-    // 2. Sync local user profile
-    const res = updateUserProfile(selectedUser.email, { name: formName.trim() })
-    setLoading(false)
-
-    if (res.error) {
-      setErrorMsg(res.error)
-    } else {
-      setSuccessMsg(`Nome do usuário ${selectedUser.email} atualizado com sucesso no Supabase e no app!`)
+    run({ action: "update-name", userId: selectedUser.id, name: formName.trim() }, `Nome de ${selectedUser.email} atualizado.`, () =>
       setIsEditModalOpen(false)
-      reloadUsers()
-    }
+    )
   }
 
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedUser || !formPassword.trim()) return
-    setErrorMsg(null)
-    setSuccessMsg(null)
-
-    if (formPassword.length < 6) {
-      setErrorMsg("A nova senha deve ter no mínimo 6 caracteres.")
+    if (!selectedUser) return
+    if (formPassword.length < 8) {
+      setErrorMsg("A nova senha deve ter no mínimo 8 caracteres.")
       return
     }
-
-    setLoading(true)
-
-    // 1. Sync password change to Supabase
-    try {
-      await fetch("/api/admin-user-action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "change-password", email: selectedUser.email, password: formPassword.trim() }),
-      })
-    } catch (err) {
-      console.error("Supabase password update error:", err)
-    }
-
-    // 2. Sync local user credentials
-    const res = updateUserPassword(selectedUser.email, formPassword.trim())
-    setLoading(false)
-
-    if (res.error) {
-      setErrorMsg(res.error)
-    } else {
-      setSuccessMsg(`Senha de ${selectedUser.email} alterada no Supabase e no app com sucesso!`)
+    run({ action: "change-password", userId: selectedUser.id, password: formPassword }, `Senha de ${selectedUser.email} alterada.`, () => {
       setIsPasswordModalOpen(false)
       setFormPassword("")
-      reloadUsers()
-    }
+    })
   }
 
-  const handleDeleteUser = async () => {
+  const handleDeleteUser = () => {
     if (!selectedUser) return
-    if (selectedUser.email.toLowerCase() === "flavio.adsv@gmail.com") {
-      setErrorMsg("Não é possível excluir a conta do Super Admin.")
-      setIsDeleteModalOpen(false)
-      return
-    }
+    run({ action: "delete", userId: selectedUser.id }, `Usuário ${selectedUser.email} excluído.`, () => setIsDeleteModalOpen(false))
+  }
 
-    setErrorMsg(null)
-    setSuccessMsg(null)
-
-    setLoading(true)
-
-    // 1. Sync delete to Supabase
-    try {
-      await fetch("/api/admin-user-action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete-user", email: selectedUser.email }),
-      })
-    } catch (err) {
-      console.error("Supabase delete user error:", err)
-    }
-
-    // 2. Sync local delete
-    const res = deleteUserAccount(selectedUser.email)
-    setLoading(false)
-
-    if (res.error) {
-      setErrorMsg(res.error)
-    } else {
-      setSuccessMsg(`Usuário ${selectedUser.email} excluído do Supabase e do app.`)
-      setIsDeleteModalOpen(false)
-      reloadUsers()
-    }
+  const handleSetRole = (user: AdminUser, role: UserRole) => {
+    run({ action: "set-role", userId: user.id, role }, `${user.name} agora é ${roleLabel[role].toLowerCase()}.`)
   }
 
   return (
@@ -269,12 +171,9 @@ export function AdminView() {
           <div className="flex items-center gap-2">
             <ShieldCheck className="size-6 text-primary" />
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Administração de Usuários</h1>
-            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary border border-primary/20">
-              Super Admin
-            </span>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Painel exclusivo de controle central para adicionar, editar, redefinir senhas e excluir usuários do sistema.
+            Crie contas, aprove acessos pendentes, altere papéis, redefina senhas e remova usuários.
           </p>
         </div>
 
@@ -351,7 +250,7 @@ export function AdminView() {
                   </tr>
                 ) : (
                   filteredUsers.map((user) => {
-                    const isSuper = user.email.toLowerCase() === "flavio.adsv@gmail.com"
+                    const isSelf = user.id === currentUser.id
                     return (
                       <tr key={user.id || user.email} className="hover:bg-muted/30 transition-colors">
                         <td className="px-6 py-4">
@@ -359,7 +258,7 @@ export function AdminView() {
                             <Avatar className="size-9 border border-border">
                               <AvatarFallback
                                 className="font-bold text-xs text-white"
-                                style={{ backgroundColor: isSuper ? "#0F6FFF" : user.avatarColor || "#6366f1" }}
+                                style={{ backgroundColor: user.avatarColor || "#6366f1" }}
                               >
                                 {user.avatar || user.name.slice(0, 2).toUpperCase()}
                               </AvatarFallback>
@@ -372,21 +271,29 @@ export function AdminView() {
                         </td>
 
                         <td className="px-6 py-4">
-                          {isSuper ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary border border-primary/20">
-                              <ShieldCheck className="size-3.5" /> Super Admin
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
-                              Usuário
-                            </span>
-                          )}
+                          <select
+                            value={user.role}
+                            disabled={loading || isSelf}
+                            onChange={(e) => handleSetRole(user, e.target.value as UserRole)}
+                            title={isSelf ? "Você não pode alterar o próprio papel" : "Alterar papel"}
+                            className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground disabled:opacity-60"
+                          >
+                            <option value="admin">Administrador</option>
+                            <option value="member">Membro</option>
+                            <option value="pending">Pendente</option>
+                          </select>
                         </td>
 
                         <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-500 font-medium">
-                            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" /> Ativo
-                          </span>
+                          {user.role === "pending" ? (
+                            <Button size="sm" variant="outline" disabled={loading} onClick={() => handleSetRole(user, "member")} className="h-7 rounded-lg text-xs">
+                              Aprovar acesso
+                            </Button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-500">
+                              <span className="size-2 rounded-full bg-emerald-500" /> Ativo
+                            </span>
+                          )}
                         </td>
 
                         <td className="px-6 py-4 text-right">
@@ -423,8 +330,8 @@ export function AdminView() {
                               <KeyRound className="size-4" />
                             </Button>
 
-                            {/* Delete User (Disabled for Super Admin) */}
-                            {!isSuper && (
+                            {/* Excluir (não permitido para a própria conta) */}
+                            {!isSelf && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -496,11 +403,11 @@ export function AdminView() {
                   <Lock className="size-4 text-muted-foreground" />
                   <Input
                     type="password"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     value={formPassword}
                     onChange={(e) => setFormPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={8}
                     className="border-0 shadow-none focus-visible:ring-0 text-sm"
                   />
                 </div>
@@ -581,11 +488,11 @@ export function AdminView() {
                   <Lock className="size-4 text-muted-foreground" />
                   <Input
                     type="password"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     value={formPassword}
                     onChange={(e) => setFormPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={8}
                     className="border-0 shadow-none focus-visible:ring-0 text-sm"
                   />
                 </div>

@@ -37,13 +37,8 @@ export function DashboardHeader() {
     }
   }
 
-  const handleLogAndReset = () => {
-    if (timer.seconds >= 60) {
-      logTimerHours()
-    } else {
-      resetTimer()
-    }
-  }
+  // logTimerHours avisa (sem descartar) quando há menos de 1 minuto
+  const handleLogAndReset = () => logTimerHours()
 
   return (
     <>
@@ -87,7 +82,7 @@ export function DashboardHeader() {
                     onClick={handleLogAndReset}
                     className="flex size-5 items-center justify-center rounded-lg text-emerald-500 transition-all duration-150 hover:bg-emerald-500/10 hover:scale-110"
                     aria-label="Registrar horas e resetar"
-                    title="Registrar horas"
+                    title={timer.seconds >= 60 ? "Registrar horas" : "Mínimo de 1 minuto para registrar"}
                   >
                     <Check className="size-3.5" />
                   </button>

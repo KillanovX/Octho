@@ -3,7 +3,6 @@
 import React from "react"
 import { X, Check } from "lucide-react"
 import { useApp } from "@/lib/context"
-import { updateUserAvatarImage } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 export const shadcnAvatars = [
@@ -25,27 +24,12 @@ type AvatarSelectorModalProps = {
 }
 
 export function AvatarSelectorModal({ open, onClose }: AvatarSelectorModalProps) {
-  const { currentUser, setCurrentUser } = useApp()
+  const { currentUser, updateMyProfile } = useApp()
 
   if (!open) return null
 
   const handleSelect = async (url: string) => {
-    const updatedUser = {
-      ...currentUser,
-      imageUrl: url,
-    }
-
-    setCurrentUser(updatedUser)
-
-    try {
-      localStorage.setItem("octho_user", JSON.stringify(updatedUser))
-    } catch {}
-
-    if (currentUser?.id) {
-      await updateUserAvatarImage(currentUser.id, url)
-    }
-
-    onClose()
+    if (await updateMyProfile({ imageUrl: url })) onClose()
   }
 
   const currentUrl = currentUser?.imageUrl || "https://images.shadcnspace.com/assets/profiles/user-1.jpg"

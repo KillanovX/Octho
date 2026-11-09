@@ -7,30 +7,22 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { AvatarSelectorModal } from "@/components/avatar-selector-modal"
 import { Button } from "@/components/ui/button"
 
-const avatarMap: Record<string, string> = {
-  MA: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
-  FA: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
-}
-
 export function SettingsView() {
-  const { currentUser, setCurrentUser, signOut } = useApp()
+  const { currentUser, updateMyProfile, signOut } = useApp()
 
   const [saved, setSaved] = useState(false)
   const [name, setName] = useState(currentUser.name)
-  const [email, setEmail] = useState(currentUser.email)
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [soundEffects, setSoundEffects] = useState(true)
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
 
-  const userAvatarSrc = currentUser.imageUrl || avatarMap[currentUser.avatar]
+  const userAvatarSrc = currentUser.imageUrl
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    setCurrentUser({
-      ...currentUser,
-      name,
-      email,
-    })
+    if (name.trim() && name.trim() !== currentUser.name) {
+      if (!(await updateMyProfile({ name }))) return
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
@@ -83,9 +75,10 @@ export function SettingsView() {
                     <label className="text-xs font-medium text-muted-foreground">Email Profissional</label>
                     <input
                       type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+                      value={currentUser.email}
+                      readOnly
+                      title="O e-mail só pode ser alterado por um administrador"
+                      className="w-full cursor-not-allowed rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground outline-none"
                     />
                   </div>
                 </div>

@@ -15,4 +15,8 @@ export type Meeting = {
   participants?: string[]
   status: MeetingStatus
   hoursAddedToTask?: boolean
+  // Integração Granola / Obsidian
+  granolaId?: string
+  externalRef?: string   // ID do chamado ITSM
+  vaultPath?: string     // caminho da ata no vault
 }

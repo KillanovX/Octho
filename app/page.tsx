@@ -11,7 +11,7 @@ import { ActivityFeed } from "@/components/activity-feed"
 import { SearchModal } from "@/components/search-modal"
 import { TaskModal } from "@/components/task-modal"
 import { TaskDetailsModal } from "@/components/task-details-modal"
-import { AuthModal } from "@/components/auth-modal"
+import { SyncErrorBanner, PendingApprovalScreen, NotConfiguredScreen } from "@/components/app-status"
 import { useApp } from "@/lib/context"
 import { Task } from "@/lib/data"
 
@@ -98,7 +98,7 @@ function MyTasksView() {
 }
 
 export default function Page() {
-  const { activeView, isAuthenticated, isAuthLoading, isAuthModalOpen, closeAuthModal } = useApp()
+  const { activeView, isAuthenticated, isAuthLoading, isPendingApproval, isSupabaseActive, isAdmin } = useApp()
   const [searchOpen, setSearchOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
 
@@ -107,7 +107,11 @@ export default function Page() {
     setEditTask(task)
   }
 
-  if (isAuthLoading && !isAuthenticated) {
+  if (!isSupabaseActive) {
+    return <NotConfiguredScreen />
+  }
+
+  if (isAuthLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#090D16]">
         <div className="flex flex-col items-center gap-4 animate-pulse">
@@ -128,7 +132,7 @@ export default function Page() {
     )
   }
 
-  if (!isAuthenticated || activeView === "login") {
+  if (!isAuthenticated) {
     return (
       <BeamsBackground intensity="strong">
         <div className="relative z-10 w-full max-w-md flex flex-col items-center">
@@ -136,6 +140,10 @@ export default function Page() {
         </div>
       </BeamsBackground>
     )
+  }
+
+  if (isPendingApproval) {
+    return <PendingApprovalScreen />
   }
 
   return (
@@ -211,7 +219,7 @@ export default function Page() {
           </ViewWrapper>
         )}
 
-        {activeView === "admin" && (
+        {activeView === "admin" && isAdmin && (
           <ViewWrapper viewKey="admin">
             <AdminView />
           </ViewWrapper>
@@ -226,7 +234,7 @@ export default function Page() {
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onSelectTask={handleSelectTask} />
       <TaskDetailsModal open={!!editTask} onClose={() => setEditTask(null)} task={editTask} />
-      <AuthModal open={isAuthModalOpen} onClose={closeAuthModal} />
+      <SyncErrorBanner />
     </div>
   )
 }

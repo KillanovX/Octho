@@ -1,5 +1,7 @@
 -- =============================================================
--- Octho — Schema do Banco de Dados Completo (Supabase / PostgreSQL)
+-- Octho — Schema base (Supabase / PostgreSQL)
+-- Depois deste arquivo, aplique supabase/migrations/*.sql em ordem: as políticas
+-- "Acesso livre" abaixo são substituídas por RLS real na migração 20261109000000.
 -- =============================================================
 
 -- 1. Tabela de Perfis de Usuário (vinculada ao Supabase Auth)

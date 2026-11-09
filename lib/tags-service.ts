@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from "./supabase"
+import { supabase } from "./supabase"
 
 export type TagItem = {
   id: string
@@ -16,72 +16,40 @@ export const defaultTags: TagItem[] = [
   { id: "tag_6", name: "Pesquisa", color: "#14b8a6", icon: "search" },
 ]
 
-const TAGS_STORAGE_KEY = "octho_custom_tags"
+// Catálogo da equipe: fonte é a tabela custom_tags; o cache em memória atende as leituras síncronas da UI.
+let cache: TagItem[] = defaultTags
 
 export function getStoredTags(): TagItem[] {
-  if (typeof window === "undefined") return defaultTags
-  try {
-    const raw = localStorage.getItem(TAGS_STORAGE_KEY)
-    if (!raw) return defaultTags
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultTags
-  } catch {
-    return defaultTags
-  }
+  return cache
 }
 
-export function saveStoredTags(tags: TagItem[], profileId?: string): void {
-  if (typeof window === "undefined") return
-  try {
-    localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(tags))
-  } catch (e) {
-    console.error("Error saving tags:", e)
+/** Carrega as tags do Supabase. Se a tabela estiver vazia, semeia as tags padrão. */
+export async function loadTags(): Promise<TagItem[]> {
+  if (!supabase) return cache
+  const { data, error } = await supabase.from("custom_tags").select("id, name, color, icon").order("created_at")
+  if (error) throw new Error(`Falha ao carregar tags: ${error.message}`)
+  if (!data || data.length === 0) {
+    await supabase.from("custom_tags").upsert(defaultTags.map((t) => ({ ...t })))
+    cache = defaultTags
+  } else {
+    cache = data.map((r) => ({ id: r.id, name: r.name, color: r.color, icon: r.icon || "tag" }))
   }
-
-  const client = supabase
-  if (isSupabaseConfigured() && client && profileId) {
-    tags.forEach(async (tag) => {
-      try {
-        await client.from("custom_tags").upsert({
-          id: tag.id,
-          profile_id: profileId,
-          user_id: profileId.length > 5 ? profileId : null,
-          name: tag.name,
-          color: tag.color,
-          icon: tag.icon || "tag",
-        })
-      } catch (e) {
-        console.error("Error upserting tag to Supabase:", e)
-      }
-    })
-  }
+  return cache
 }
 
-export async function fetchTagsFromSupabase(profileId: string): Promise<TagItem[] | null> {
-  if (!isSupabaseConfigured() || !supabase || !profileId) return null
-  try {
-    const { data, error } = await supabase
+/** Persiste a lista completa: cria/atualiza as presentes e remove as que saíram. */
+export async function saveStoredTags(tags: TagItem[]): Promise<void> {
+  const removed = cache.filter((old) => !tags.some((t) => t.id === old.id))
+  cache = tags
+  if (!supabase) return
+  if (tags.length) {
+    const { error } = await supabase
       .from("custom_tags")
-      .select("*")
-      .or(`user_id.eq.${profileId},profile_id.eq.${profileId}`)
-      .order("created_at", { ascending: true })
-    if (error || !data || data.length === 0) return null
-    return data.map((row: Record<string, unknown>) => ({
-      id: row.id as string,
-      name: row.name as string,
-      color: row.color as string,
-      icon: (row.icon as string) || "tag",
-    }))
-  } catch {
-    return null
+      .upsert(tags.map((t) => ({ id: t.id, name: t.name, color: t.color, icon: t.icon || "tag" })))
+    if (error) throw new Error(`Falha ao salvar tags: ${error.message}`)
   }
-}
-
-export async function deleteTagFromSupabase(tagId: string): Promise<void> {
-  if (!isSupabaseConfigured() || !supabase) return
-  try {
-    await supabase.from("custom_tags").delete().eq("id", tagId)
-  } catch (e) {
-    console.error("Error deleting tag from Supabase:", e)
+  if (removed.length) {
+    const { error } = await supabase.from("custom_tags").delete().in("id", removed.map((t) => t.id))
+    if (error) throw new Error(`Falha ao excluir tags: ${error.message}`)
   }
 }

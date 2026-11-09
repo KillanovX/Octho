@@ -25,7 +25,7 @@ export type Project = {
 }
 
 export function ProjectsView() {
-  const { setActiveView, currentUser } = useApp()
+  const { setActiveView, currentUser, reportError } = useApp()
   const [projectsList, setProjectsList] = useState<Project[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -47,9 +47,10 @@ export function ProjectsView() {
           const { data, error } = await supabase
             .from("projects")
             .select("*")
-            .or(`user_id.eq.${pid},profile_id.eq.${pid}`)
             .order("created_at", { ascending: false })
-          if (!error && data && data.length > 0) {
+          if (error) reportError(`Falha ao carregar projetos: ${error.message}`)
+          if (!error && data) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- linha do Supabase sem tipos gerados
             const list: Project[] = data.map((row: any) => ({
               id: row.id,
               name: row.name,
@@ -94,10 +95,8 @@ export function ProjectsView() {
 
     if (isSupabaseConfigured() && supabase && currentUser?.id && newProject) {
       try {
-        await supabase.from("projects").upsert({
+        const { error } = await supabase.from("projects").upsert({
           id: newProject.id,
-          profile_id: currentUser.id,
-          user_id: currentUser.id.length > 5 ? currentUser.id : null,
           name: newProject.name,
           code: newProject.code,
           description: newProject.description,
@@ -108,8 +107,9 @@ export function ProjectsView() {
           estimate: newProject.estimate,
           members: newProject.members,
         })
+        if (error) reportError(`Falha ao salvar projeto: ${error.message}`)
       } catch (e) {
-        console.error("Error saving project to Supabase:", e)
+        reportError(`Falha ao salvar projeto: ${(e as Error).message}`)
       }
     }
   }
@@ -119,7 +119,7 @@ export function ProjectsView() {
     if (!name.trim()) return
 
     const newProject: Project = {
-      id: `proj_${Date.now()}`,
+      id: crypto.randomUUID(),
       name: name.trim(),
       code: code.trim().toUpperCase() || `PRJ-0${projectsList.length + 1}`,
       description: description.trim() || "Projeto da organização.",

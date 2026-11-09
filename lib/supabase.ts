@@ -1,64 +1,33 @@
-import { createClient, User as SupabaseUser } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  ""
+// Chave pública: aceita o nome novo (publishable) e o antigo (anon)
+const supabasePublicKey =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
 
 export const supabase =
-  supabaseUrl && supabaseAnonKey && !supabaseUrl.includes("YOUR_PROJECT")
-    ? createClient(supabaseUrl, supabaseAnonKey)
+  supabaseUrl && supabasePublicKey && !supabaseUrl.includes("YOUR_PROJECT")
+    ? createClient(supabaseUrl, supabasePublicKey)
     : null
 
 export function isSupabaseConfigured(): boolean {
   return supabase !== null
 }
 
-// ─── Auth Helpers ───────────────────────────────────────────
-export async function signUpWithSupabase(email: string, password: string, name: string) {
-  if (!supabase) return { data: null, error: new Error("Supabase não configurado") }
-
-  const avatar = name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) || "US"
-
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { name, avatar },
-    },
-  })
-
-  if (error) return { data: null, error }
-
-  if (data.user) {
-    // Upsert profile record
-    await supabase.from("profiles").upsert({
-      id: data.user.id,
-      name,
-      email,
-      avatar,
-      avatar_color: "#6366f1",
-    })
-  }
-
-  return { data, error: null }
+export type ProfileRow = {
+  id: string
+  name: string
+  email: string
+  avatar: string
+  avatar_color: string
+  image_url: string | null
+  role: "pending" | "member" | "admin" | null
+  created_at: string
 }
 
 export async function signInWithSupabase(email: string, password: string) {
   if (!supabase) return { data: null, error: new Error("Supabase não configurado") }
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
-
-  return { data, error }
+  return supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
 }
 
 export async function signOutSupabase() {
@@ -66,50 +35,30 @@ export async function signOutSupabase() {
   await supabase.auth.signOut()
 }
 
-export async function getUserProfile(userId: string) {
+/** Envia o e-mail de recuperação do próprio Supabase Auth (link com token validado pelo Supabase). */
+export async function requestPasswordReset(email: string) {
+  if (!supabase) return { error: new Error("Supabase não configurado") }
+  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined
+  return supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo })
+}
+
+export async function getUserProfile(userId: string): Promise<ProfileRow | null> {
   if (!supabase) return null
-  try {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single()
-    if (error) return null
-    return data
-  } catch {
-    return null
-  }
+  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
+  return error ? null : (data as ProfileRow)
 }
 
-export async function getAllSupabaseProfiles() {
+export async function getAllProfiles(): Promise<ProfileRow[]> {
   if (!supabase) return []
-  try {
-    const { data, error } = await supabase.from("profiles").select("*")
-    if (error) return []
-    return data || []
-  } catch {
-    return []
-  }
+  const { data, error } = await supabase.from("profiles").select("*").order("name")
+  return error ? [] : ((data ?? []) as ProfileRow[])
 }
 
-export async function updateSupabasePassword(newPassword: string) {
-  if (!supabase) return { data: null, error: new Error("Supabase não configurado") }
-  try {
-    const { data, error } = await supabase.auth.updateUser({ password: newPassword })
-    return { data, error }
-  } catch (e: any) {
-    return { data: null, error: e }
-  }
-}
-
-export async function updateUserAvatarImage(userId: string, imageUrl: string) {
-  if (!supabase || !userId) return
-  try {
-    await supabase.from("profiles").upsert({
-      id: userId,
-      image_url: imageUrl,
-    })
-  } catch (e) {
-    console.error("Error updating avatar image in Supabase:", e)
-  }
+/** fetch para as rotas /api do próprio app, com o token da sessão atual. */
+export async function authFetch(input: string, init: RequestInit = {}) {
+  const token = supabase ? (await supabase.auth.getSession()).data.session?.access_token : undefined
+  const headers = new Headers(init.headers)
+  if (token) headers.set("Authorization", `Bearer ${token}`)
+  if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json")
+  return fetch(input, { ...init, headers })
 }

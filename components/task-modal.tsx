@@ -17,7 +17,6 @@ import { Task, ColumnId, Priority, Tag, columns } from "@/lib/data"
 import { useApp, UserProfile } from "@/lib/context"
 import { Select, SelectOption } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { getRegisteredUsers } from "@/lib/auth-service"
 import { getStoredTags, saveStoredTags, TagItem } from "@/lib/tags-service"
 import { getStoredClients, saveStoredClient } from "@/lib/clients-service"
 import { TagManagerModal, tagIconMap } from "@/components/tag-manager-modal"
@@ -78,7 +77,7 @@ type TaskModalProps = {
 }
 
 export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps) {
-  const { addTask, updateTask, deleteTask, currentUser, profilesList } = useApp()
+  const { addTask, updateTask, deleteTask, currentUser, profilesList, reportError } = useApp()
 
   const isEdit = !!task
 
@@ -104,22 +103,11 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
     if (currentUser?.email) {
       map.set(currentUser.email.toLowerCase(), currentUser)
     }
-    profilesList.forEach((p) => {
-      if (p.email) map.set(p.email.toLowerCase(), p)
-    })
-    const registered = getRegisteredUsers()
-    registered.forEach((u) => {
-      if (u.email && !map.has(u.email.toLowerCase())) {
-        map.set(u.email.toLowerCase(), {
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          avatar: u.avatar,
-          avatarColor: u.avatarColor || "#6366f1",
-          verified: true,
-        })
-      }
-    })
+    profilesList
+      .filter((p) => p.role === "member" || p.role === "admin")
+      .forEach((p) => {
+        if (p.email) map.set(p.email.toLowerCase(), p)
+      })
     setAllUsers(Array.from(map.values()))
   }, [currentUser, profilesList])
 
@@ -178,7 +166,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
 
   const handleUpdateTags = (newTags: TagItem[]) => {
     setAvailableTags(newTags)
-    saveStoredTags(newTags)
+    saveStoredTags(newTags).catch((e: Error) => reportError(e.message))
   }
 
   // ── Submit ──
@@ -195,7 +183,7 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
     const finalClient = clientName.trim() || undefined
 
     if (finalClient) {
-      saveStoredClient(finalClient)
+      saveStoredClient(finalClient).catch((e: Error) => reportError(e.message))
     }
 
     if (isEdit && task) {

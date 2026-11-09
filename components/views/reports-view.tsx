@@ -2,7 +2,8 @@
 
 import React, { useState } from "react"
 import { BarChart3, PieChart, Download, Users, CheckCircle2, Calendar, Target, Award } from "lucide-react"
-import { useApp, users } from "@/lib/context"
+import { useApp } from "@/lib/context"
+import { periodStart, roundItsmHours, type Period } from "@/lib/hours"
 import { Select, SelectOption } from "@/components/ui/select"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
@@ -10,48 +11,88 @@ const timeframeOptions: SelectOption<string>[] = [
   { value: "month", label: "Este Mês", icon: <Calendar className="size-3.5 text-muted-foreground" /> },
   { value: "quarter", label: "Este Trimestre", icon: <Calendar className="size-3.5 text-muted-foreground" /> },
   { value: "year", label: "Este Ano", icon: <Calendar className="size-3.5 text-muted-foreground" /> },
+  { value: "all", label: "Todo o período", icon: <Calendar className="size-3.5 text-muted-foreground" /> },
 ]
 
+function csvCell(v: unknown) {
+  const str = v === null || v === undefined ? "" : String(v)
+  return /[";\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str
+}
+
 export function ReportsView() {
-  const { userData } = useApp()
+  const { userData, timeEntries, profilesList } = useApp()
   const { tasks } = userData
 
   const [timeframe, setTimeframe] = useState("month")
   const [exported, setExported] = useState(false)
 
-  // Aggregations
-  const totalTasks = tasks.length
-  const completedTasks = tasks.filter((t) => t.column === "done").length
+  const start = periodStart(timeframe as Period)?.getTime() ?? 0
+  const entries = timeEntries.filter((e) => e.startedAt >= start)
+  const taskById = new Map(tasks.map((t) => [t.id, t]))
+
+  // Concluídas = finalizadas dentro do período; ativas = todas em aberto agora
+  const completedTasks = tasks.filter((t) => t.column === "done" && (t.completedAt ?? 0) >= start).length
+  const activeTasks = tasks.filter((t) => t.column !== "done").length
+  const totalTasks = completedTasks + activeTasks
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
-  const totalLogged = tasks.reduce((acc, t) => acc + t.hoursLogged, 0)
-  const totalEstimated = tasks.reduce((acc, t) => acc + t.estimate, 0)
+  const totalLogged = entries.reduce((acc, e) => acc + e.hours, 0)
+  const totalEstimated = tasks.filter((t) => t.column !== "done").reduce((acc, t) => acc + t.estimate, 0)
   const avgHoursPerTask = completedTasks > 0 ? (totalLogged / completedTasks).toFixed(1) : "0"
 
-  // Hours by assignee
-  const assigneeStats = users.map((u) => {
-    const userTasks = tasks.filter((t) => {
-      const target = [u.id, u.name, u.email, u.avatar].filter(Boolean).map((s) => s.toLowerCase())
-      const a = (t.assignee || "").toLowerCase()
-      const an = (t.assigneeName || "").toLowerCase()
-      const aa = (t.assigneeAvatar || "").toLowerCase()
-      return target.some((val) => val === a || val === an || val === aa)
+  // Horas por membro a partir dos lançamentos; entregas pelas tarefas atribuídas
+  const members = profilesList.filter((p) => p.role === "member" || p.role === "admin")
+  const assigneeStats = members
+    .map((u) => {
+      const hours = Math.round(entries.filter((e) => e.userId === u.id).reduce((acc, e) => acc + e.hours, 0) * 100) / 100
+      const keys = [u.id, u.name, u.email, u.avatar].filter(Boolean).map((s) => s.toLowerCase())
+      const userTasks = tasks.filter((t) =>
+        [t.assignee, t.assigneeName, t.assigneeAvatar].some((v) => v && keys.includes(v.toLowerCase()))
+      )
+      const done = userTasks.filter((t) => t.column === "done" && (t.completedAt ?? 0) >= start).length
+      return { ...u, hours, done, total: userTasks.length }
     })
-    const hours = userTasks.reduce((acc, t) => acc + t.hoursLogged, 0)
-    const done = userTasks.filter((t) => t.column === "done").length
-    return { ...u, hours, done, total: userTasks.length }
-  })
+    .sort((a, b) => b.hours - a.hours)
+  const activeMembers = assigneeStats.filter((u) => u.hours > 0).length
 
-  // Priority breakdown
   const prioritiesCount = {
-    urgent: tasks.filter((t) => t.priority === "urgent").length,
-    high: tasks.filter((t) => t.priority === "high").length,
-    medium: tasks.filter((t) => t.priority === "medium").length,
-    low: tasks.filter((t) => t.priority === "low").length,
-    none: tasks.filter((t) => t.priority === "none").length,
+    urgent: tasks.filter((t) => t.column !== "done" && t.priority === "urgent").length,
+    high: tasks.filter((t) => t.column !== "done" && t.priority === "high").length,
+    medium: tasks.filter((t) => t.column !== "done" && t.priority === "medium").length,
+    low: tasks.filter((t) => t.column !== "done" && t.priority === "low").length,
+    none: tasks.filter((t) => t.column !== "done" && t.priority === "none").length,
   }
 
   const handleExportCSV = () => {
+    const userById = new Map(profilesList.map((p) => [p.id, p.name]))
+    const header = ["data", "inicio", "membro", "tarefa", "titulo", "chamado", "cliente", "origem", "horas", "horas_apontamento", "nota"]
+    const rows = [...entries]
+      .sort((a, b) => a.startedAt - b.startedAt)
+      .map((e) => {
+        const t = e.taskId ? taskById.get(e.taskId) : undefined
+        const d = new Date(e.startedAt)
+        return [
+          d.toLocaleDateString("pt-BR"),
+          d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+          userById.get(e.userId) ?? e.userId,
+          t?.code ?? "",
+          t?.title ?? "",
+          t?.externalRef ?? "",
+          t?.client ?? "",
+          e.source,
+          e.hours.toFixed(2).replace(".", ","),
+          roundItsmHours(e.hours).toFixed(1).replace(".", ","),
+          e.note ?? "",
+        ]
+      })
+    // ; e BOM para abrir direto no Excel em pt-BR
+    const csv = "﻿" +[header, ...rows].map((r) => r.map(csvCell).join(";")).join("\n")
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }))
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `octho-horas-${timeframe}-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
     setExported(true)
     setTimeout(() => setExported(false), 3000)
   }
@@ -109,7 +150,7 @@ export function ReportsView() {
               </div>
             </div>
             <p className="mt-2 text-2xl font-bold text-card-foreground">{totalLogged.toFixed(1)}h</p>
-            <p className="mt-1 text-xs text-muted-foreground">Previsto: {totalEstimated}h</p>
+            <p className="mt-1 text-xs text-muted-foreground">Estimativa em aberto: {totalEstimated}h</p>
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4">
@@ -130,7 +171,7 @@ export function ReportsView() {
                 <Users className="size-4" />
               </div>
             </div>
-            <p className="mt-2 text-2xl font-bold text-card-foreground">{users.length}</p>
+            <p className="mt-2 text-2xl font-bold text-card-foreground">{activeMembers}</p>
             <p className="mt-1 text-xs text-muted-foreground">Contribuidores no período</p>
           </div>
         </div>
@@ -148,6 +189,7 @@ export function ReportsView() {
             </div>
 
             <div className="flex flex-col gap-4">
+              {assigneeStats.length === 0 && <p className="text-xs text-muted-foreground">Nenhum membro cadastrado.</p>}
               {assigneeStats.map((u) => {
                 const maxH = Math.max(...assigneeStats.map((s) => s.hours), 1)
                 const pct = Math.round((u.hours / maxH) * 100)
@@ -163,7 +205,7 @@ export function ReportsView() {
                         </Avatar>
                         <span className="font-medium text-foreground">{u.name}</span>
                       </div>
-                      <span className="font-mono text-muted-foreground">{u.hours}h ({u.done}/{u.total} concluídas)</span>
+                      <span className="font-mono text-muted-foreground">{u.hours.toFixed(1)}h ({u.done}/{u.total} concluídas)</span>
                     </div>
                     <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
                       <div className="h-full bg-primary transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: u.avatarColor }} />

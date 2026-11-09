@@ -1,22 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { Calendar } from "lucide-react"
 import { useApp } from "@/lib/context"
-import { Select, type SelectOption } from "@/components/ui/select"
-
-const periodOptions: SelectOption<string>[] = [
-  { value: "7d", label: "Últimos 7 dias", icon: <Calendar className="size-3.5 text-muted-foreground shrink-0" /> },
-  { value: "14d", label: "Últimos 14 dias", icon: <Calendar className="size-3.5 text-muted-foreground shrink-0" /> },
-  { value: "month", label: "Este mês", icon: <Calendar className="size-3.5 text-muted-foreground shrink-0" /> },
-]
 
 export function WeeklyHoursChart() {
   const { userData } = useApp()
   const { weeklyHours } = userData
-  const [period, setPeriod] = useState<string>("7d")
 
-  const max = 8
+  const max = Math.max(8, ...weeklyHours.map((d) => d.hours))
   const total = weeklyHours.reduce((acc, d) => acc + d.hours, 0)
   const goalDays = weeklyHours.filter((d) => d.goal > 0).length
   const avg = goalDays > 0 ? total / goalDays : 0
@@ -27,6 +17,7 @@ export function WeeklyHoursChart() {
   const padY = 12
   const innerW = width - padX * 2
   const innerH = height - padY * 2
+  const goalY = padY + innerH * (1 - 8 / max) // linha tracejada = meta de 8h
 
   const points = weeklyHours.map((d, i) => {
     const x = padX + (innerW * i) / (weeklyHours.length - 1)
@@ -42,17 +33,9 @@ export function WeeklyHoursChart() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-card-foreground">Horas por dia</h3>
-          <p className="text-xs text-muted-foreground">Desempenho de registros</p>
+          <p className="text-xs text-muted-foreground">Semana atual (segunda a domingo)</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="w-44">
-            <Select
-              value={period}
-              onChange={setPeriod}
-              options={periodOptions}
-              triggerClassName="h-8 text-xs px-2.5 py-1"
-            />
-          </div>
           <div className="text-right">
             <p className="text-lg font-semibold text-card-foreground">{total.toFixed(1)}h</p>
             <p className="text-xs text-muted-foreground">média {avg.toFixed(1)}h/dia</p>
@@ -76,7 +59,7 @@ export function WeeklyHoursChart() {
           </defs>
 
           <line
-            x1={padX} y1={padY} x2={width - padX} y2={padY}
+            x1={padX} y1={goalY} x2={width - padX} y2={goalY}
             stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3"
           />
 
@@ -103,7 +86,7 @@ export function WeeklyHoursChart() {
                 className="text-xs font-medium tabular-nums"
                 style={{ color: reached ? "var(--chart-4)" : "var(--card-foreground)" }}
               >
-                {d.hours}h
+                {d.hours.toFixed(1)}h
               </span>
             </div>
           )

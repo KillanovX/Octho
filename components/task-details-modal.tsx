@@ -32,7 +32,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { tagIconMap, TagManagerModal } from "@/components/tag-manager-modal"
 import { getStoredClients, saveStoredClient } from "@/lib/clients-service"
-import { getRegisteredUsers } from "@/lib/auth-service"
 import { getStoredTags, saveStoredTags, type TagItem } from "@/lib/tags-service"
 import { cn } from "@/lib/utils"
 
@@ -56,7 +55,7 @@ type TaskDetailsModalProps = {
 }
 
 export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps) {
-  const { updateTask, deleteTask, currentUser, profilesList, startTimer } = useApp()
+  const { updateTask, deleteTask, currentUser, profilesList, startTimer, reportError } = useApp()
 
   const [activeTab, setActiveTab] = useState<"checkpoints" | "comments" | "history">("checkpoints")
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -90,21 +89,11 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
   useEffect(() => {
     const map = new Map<string, UserProfile>()
     if (currentUser?.email) map.set(currentUser.email.toLowerCase(), currentUser)
-    profilesList.forEach((p) => {
-      if (p.email) map.set(p.email.toLowerCase(), p)
-    })
-    getRegisteredUsers().forEach((u) => {
-      if (u.email && !map.has(u.email.toLowerCase())) {
-        map.set(u.email.toLowerCase(), {
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          avatar: u.avatar,
-          avatarColor: u.avatarColor || "#6366f1",
-          verified: true,
-        })
-      }
-    })
+    profilesList
+      .filter((p) => p.role === "member" || p.role === "admin")
+      .forEach((p) => {
+        if (p.email) map.set(p.email.toLowerCase(), p)
+      })
     setAllUsers(Array.from(map.values()))
   }, [currentUser, profilesList])
 
@@ -188,7 +177,7 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
 
   const handleClientChange = (newClient: string) => {
     const clean = newClient.trim()
-    if (clean) saveStoredClient(clean)
+    if (clean) saveStoredClient(clean).catch((e: Error) => reportError(e.message))
     const updatedHistory = addHistoryEvent(`Cliente alterado para "${clean || "Nenhum"}"`)
     updateTask(task.id, {
       client: clean || undefined,
@@ -450,7 +439,7 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                           e.preventDefault()
-                          handleAddComment(e as any)
+                          handleAddComment(e)
                         }
                       }}
                       className="w-full bg-transparent px-4 pt-3 pb-12 text-sm text-foreground outline-none placeholder:text-muted-foreground min-h-[100px] resize-none rounded-xl"
@@ -750,7 +739,7 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
         }}
         tags={availableTags}
         onUpdateTags={(newTags) => {
-          saveStoredTags(newTags)
+          saveStoredTags(newTags).catch((e: Error) => reportError(e.message))
           setAvailableTags(newTags)
         }}
       />

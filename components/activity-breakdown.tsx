@@ -5,22 +5,8 @@ import { useApp } from "@/lib/context"
 export function ActivityBreakdown() {
   const { userData } = useApp()
 
-  // Compute hours by label from actual task data
-  const labelHoursMap = new Map<string, number>()
-  const labelColorMap = new Map<string, string>()
-  for (const task of userData.tasks) {
-    for (const label of task.labels) {
-      labelHoursMap.set(label.name, (labelHoursMap.get(label.name) ?? 0) + task.hoursLogged)
-      labelColorMap.set(label.name, label.color)
-    }
-  }
-
-  // Merge with predefined categories (keep all categories visible even if 0h)
-  const breakdown = userData.activityBreakdown.map(a => ({
-    name: a.name,
-    hours: labelHoursMap.get(a.name) ?? a.hours,
-    color: a.color,
-  }))
+  // Calculado no contexto a partir dos lançamentos do mês (time_entries), pela primeira tag da tarefa
+  const breakdown = userData.activityBreakdown
 
   const total = breakdown.reduce((acc, a) => acc + a.hours, 0)
 
@@ -31,7 +17,7 @@ export function ActivityBreakdown() {
           <h3 className="text-sm font-semibold text-card-foreground">Horas por atividade</h3>
           <p className="text-xs text-muted-foreground">Distribuição do mês</p>
         </div>
-        <p className="text-lg font-semibold text-card-foreground">{total.toFixed(0)}h</p>
+        <p className="text-lg font-semibold text-card-foreground">{total.toFixed(1)}h</p>
       </div>
 
       <div className="mt-5 flex h-3 w-full overflow-hidden rounded-full bg-muted">
@@ -49,6 +35,10 @@ export function ActivityBreakdown() {
         )}
       </div>
 
+      {breakdown.length === 0 && (
+        <p className="mt-5 text-xs text-muted-foreground">Nenhuma hora registrada neste mês.</p>
+      )}
+
       <ul className="mt-5 flex flex-col gap-3">
         {breakdown.map((a) => {
           const pct = total > 0 ? Math.round((a.hours / total) * 100) : 0
@@ -56,7 +46,7 @@ export function ActivityBreakdown() {
             <li key={a.name} className="flex items-center gap-3">
               <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: a.color }} />
               <span className="flex-1 text-sm text-card-foreground">{a.name}</span>
-              <span className="text-sm font-medium tabular-nums text-card-foreground">{a.hours.toFixed(0)}h</span>
+              <span className="text-sm font-medium tabular-nums text-card-foreground">{a.hours.toFixed(1)}h</span>
               <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">{pct}%</span>
             </li>
           )
