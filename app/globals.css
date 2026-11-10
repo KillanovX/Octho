@@ -234,6 +234,26 @@
 }
 
 /* ─── Timer Pulse ───────────────────────────────────────────────── */
+/* Card alterado por outra pessoa / pelo Hermes (Realtime) */
+@keyframes remoteFlash {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 0%, transparent); }
+  15% { box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 45%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 0%, transparent); }
+}
+
+/* Conclusão: card que entra em "Concluído" e checkpoint marcado */
+@keyframes donePop {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklch, var(--chart-4) 0%, transparent); }
+  35% { transform: scale(1.025); box-shadow: 0 0 0 4px color-mix(in oklch, var(--chart-4) 35%, transparent); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklch, var(--chart-4) 0%, transparent); }
+}
+
+@keyframes checkPop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
 /* Colunas de gráfico crescem a partir da base */
 @keyframes barGrow {
   from { transform: scaleY(0); }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, DragEvent } from "react"
-import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus, GripVertical, Filter, Tag as TagIcon, Building2, ListChecks } from "lucide-react"
+import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus, GripVertical, Filter, Tag as TagIcon, Building2, ListChecks, Search, Play, Pause, CalendarClock } from "lucide-react"
 import { columns, type Priority, type Task, type ColumnId } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/context"
@@ -11,6 +11,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, type SelectOption } from "@/components/ui/select"
 import { tagIconMap } from "@/components/tag-manager-modal"
 import { assigneeImage } from "@/lib/people"
+import { byPosition } from "@/lib/derive"
+import { AnimatePresence, motion, MotionConfig } from "motion/react"
 
 const priorityConfig: Record<Priority, { icon: typeof SignalHigh; className: string; label: string }> = {
   urgent: { icon: AlertTriangle, className: "text-destructive", label: "Urgente" },
@@ -38,13 +40,28 @@ const columnDotColors: Record<string, string> = {
 }
 
 export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
-  const { userData, moveTask } = useApp()
+  const { userData, moveTask, isInitialLoading } = useApp()
   const { tasks } = userData
 
   const [priorityFilter, setPriorityFilter] = useState<string>("all")
+  const [clientFilter, setClientFilter] = useState<string>("all")
+  const [query, setQuery] = useState("")
+  // card que acabou de entrar em "Concluído" (animação de conclusão)
+  const [justCompleted, setJustCompleted] = useState<string | null>(null)
+  const clientOptions: SelectOption<string>[] = [
+    { value: "all", label: "Todos os clientes", icon: <Building2 className="size-3.5 text-muted-foreground shrink-0" /> },
+    ...[...new Set(tasks.map((t) => t.client).filter((c): c is string => !!c))]
+      .sort((a, b) => a.localeCompare(b, "pt-BR"))
+      .map((c) => ({ value: c, label: c })),
+  ]
   // No mobile (< md) o quadro vira lista: uma coluna por vez, escolhida nas abas
   const [mobileColumn, setMobileColumn] = useState<ColumnId>("in_progress")
-  const visible = (t: Task) => priorityFilter === "all" || t.priority === priorityFilter
+  const q = query.trim().toLowerCase().replace(/^#/, "")
+  const visible = (t: Task) =>
+    (priorityFilter === "all" || t.priority === priorityFilter) &&
+    (clientFilter === "all" || t.client === clientFilter) &&
+    (!q || [t.code, t.title, t.externalRef, t.client].some((v) => v?.toLowerCase().includes(q)))
+  const filtersActive = priorityFilter !== "all" || clientFilter !== "all" || !!q
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [createColumn, setCreateColumn] = useState<ColumnId | null>(null)
   const [dragOverCol, setDragOverCol] = useState<ColumnId | null>(null)
@@ -74,10 +91,19 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
     setDragOverCardId(null)
   }
 
+  const celebrate = (taskId: string, colId: ColumnId) => {
+    const before = tasks.find((t) => t.id === taskId)
+    if (colId === "done" && before && before.column !== "done") {
+      setJustCompleted(taskId)
+      setTimeout(() => setJustCompleted((cur) => (cur === taskId ? null : cur)), 1200)
+    }
+  }
+
   const handleDropColumn = (e: DragEvent, colId: ColumnId) => {
     e.preventDefault()
     const taskId = e.dataTransfer.getData("text/plain")
     if (taskId) {
+      celebrate(taskId, colId)
       moveTask(taskId, colId)
     }
     setDragOverCol(null)
@@ -98,6 +124,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
     e.stopPropagation()
     const taskId = e.dataTransfer.getData("text/plain")
     if (taskId && taskId !== overTaskId) {
+      celebrate(taskId, colId)
       moveTask(taskId, colId, overTaskId)
     }
     setDragOverCol(null)
@@ -106,7 +133,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
   }
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <div className={cn("rounded-xl border border-border bg-card overflow-hidden", fullWidth ? "flex-1" : "")}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 bg-card/80">
           <div>
@@ -116,13 +143,36 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
               <span className="md:hidden">Toque em um card para ver detalhes e mudar o status</span>
             </p>
           </div>
-          <div className="w-52">
-            <Select
-              value={priorityFilter}
-              onChange={setPriorityFilter}
-              options={priorityFilterOptions}
-              triggerClassName="h-8 text-xs px-2.5 py-1"
-            />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <div className="relative w-full sm:w-auto">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Chamado, código ou título"
+                aria-label="Filtrar por chamado, código ou título"
+                className="h-8 w-full rounded-lg border border-border bg-background pl-8 pr-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring sm:w-52"
+              />
+            </div>
+            <div className="min-w-0 flex-1 sm:w-44 sm:flex-none">
+              <Select value={clientFilter} onChange={setClientFilter} options={clientOptions} triggerClassName="h-8 text-xs px-2.5 py-1" />
+            </div>
+            <div className="min-w-0 flex-1 sm:w-48 sm:flex-none">
+              <Select value={priorityFilter} onChange={setPriorityFilter} options={priorityFilterOptions} triggerClassName="h-8 text-xs px-2.5 py-1" />
+            </div>
+            {filtersActive && (
+              <button
+                onClick={() => {
+                  setQuery("")
+                  setClientFilter("all")
+                  setPriorityFilter("all")
+                }}
+                className="h-8 rounded-lg px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground animate-in fade-in duration-150"
+              >
+                Limpar
+              </button>
+            )}
           </div>
         </div>
 
@@ -153,7 +203,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
 
         <div className="flex gap-4 p-4 md:overflow-x-auto">
           {columns.map((col) => {
-            const colTasks = tasks.filter((t) => t.column === col.id && visible(t))
+            const colTasks = tasks.filter((t) => t.column === col.id && visible(t)).sort(byPosition)
             const colHours = colTasks.reduce((acc, t) => acc + t.hoursLogged, 0)
             const isDragOver = dragOverCol === col.id
 
@@ -199,11 +249,22 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
                   onDragLeave={handleDragLeaveColumn}
                   onDrop={(e) => handleDropColumn(e, col.id)}
                 >
-                  {colTasks.length > 0 ? (
-                    colTasks.map((t) => (
-                      <TaskCard
+                  {isInitialLoading ? (
+                    <CardSkeletons />
+                  ) : colTasks.length > 0 ? (
+                    <AnimatePresence initial={false}>
+                    {colTasks.map((t) => (
+                      <motion.div
                         key={t.id}
+                        layout="position"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.97 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 38, mass: 0.6 }}
+                      >
+                      <TaskCard
                         task={t}
+                        justCompleted={justCompleted === t.id}
                         onEdit={() => setEditTask(t)}
                         onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd}
@@ -212,10 +273,14 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
                         isDragOver={dragOverCardId === t.id}
                         isDragging={draggingTaskId === t.id}
                       />
-                    ))
+                      </motion.div>
+                    ))}
+                    </AnimatePresence>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-center text-xs text-muted-foreground border border-dashed border-border/60 rounded-xl transition-colors">
-                      {isDragOver ? (
+                      {filtersActive && !isDragOver ? (
+                        <span>Nenhuma tarefa com esses filtros</span>
+                      ) : isDragOver ? (
                         <span className="text-primary font-medium animate-in fade-in">Soltar aqui</span>
                       ) : (
                         <>
@@ -235,19 +300,20 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
       <TaskDetailsModal
         open={!!editTask}
         onClose={() => setEditTask(null)}
-        task={editTask}
+        task={editTask ? (tasks.find((t) => t.id === editTask.id) ?? editTask) : null}
       />
       <TaskModal
         open={!!createColumn}
         onClose={() => setCreateColumn(null)}
         defaultColumn={createColumn ?? undefined}
       />
-    </>
+    </MotionConfig>
   )
 }
 
 function TaskCard({
   task,
+  justCompleted,
   onEdit,
   onDragStart,
   onDragEnd,
@@ -257,6 +323,7 @@ function TaskCard({
   isDragging,
 }: {
   task: Task
+  justCompleted?: boolean
   onEdit: () => void
   onDragStart: (e: DragEvent, taskId: string) => void
   onDragEnd: () => void
@@ -266,7 +333,9 @@ function TaskCard({
   isDragging: boolean
 }) {
   const p = priorityConfig[task.priority]
-  const { profilesList } = useApp()
+  const { profilesList, timer, startTimer, setTimerRunning, recentlyChangedTaskIds } = useApp()
+  const timerHere = timer.taskId === task.id
+  const changedRemotely = recentlyChangedTaskIds.has(task.id)
 
   return (
     <article
@@ -291,7 +360,10 @@ function TaskCard({
         "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-black/8",
         "active:translate-y-0 active:shadow-none",
         isDragOver && "border-t-2 border-t-primary",
-        isDragging && "opacity-40 scale-95 rotate-1"
+        isDragging && "opacity-40 scale-95 rotate-1",
+        timerHere && "border-primary/50",
+        changedRemotely && "animate-[remoteFlash_2.4s_ease-out]",
+        justCompleted && "animate-[donePop_900ms_ease-out]"
       )}
     >
       <div className="flex items-center justify-between gap-2">
@@ -300,6 +372,28 @@ function TaskCard({
           <span className="font-mono text-[11px] text-muted-foreground shrink-0 bg-muted/60 px-1.5 py-0.5 rounded-md">
             {task.code}
           </span>
+          {task.column !== "done" && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (timerHere) setTimerRunning(!timer.running)
+                else startTimer(task.id, task.code)
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+              aria-label={timerHere ? (timer.running ? "Pausar timer" : "Retomar timer") : `Iniciar timer em ${task.code}`}
+              title={timerHere ? (timer.running ? "Pausar timer" : "Retomar timer") : timer.taskId ? `Trocar o timer de ${timer.taskCode} para esta tarefa` : "Iniciar timer"}
+              className={cn(
+                "flex size-5 shrink-0 items-center justify-center rounded-full transition-all duration-150",
+                timerHere
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground opacity-0 hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-100"
+              )}
+            >
+              {timerHere && timer.running ? <Pause className="size-2.5 fill-current" /> : <Play className="size-2.5 fill-current" />}
+            </button>
+          )}
+          {timerHere && timer.running && <span className="size-1.5 shrink-0 rounded-full bg-primary timer-pulse" aria-hidden="true" />}
         </div>
 
         {/* Responsável */}
@@ -365,6 +459,7 @@ function TaskCard({
           )
         })}
         <CardActionsProgress task={task} />
+        <CardDue task={task} />
         {(task.hoursLogged > 0 || task.estimate > 0) && (
           <span className="ml-auto flex items-center gap-0.5 text-[11px] tabular-nums text-muted-foreground font-medium" title="Horas registradas / estimadas">
             <Clock className="size-3" />
@@ -392,5 +487,49 @@ function CardActionsProgress({ task }: { task: Task }) {
       <ListChecks className="size-3" />
       {done}/{actions.length}
     </span>
+  )
+}
+
+/** Prazo da próxima ação pendente (vem do vault como campo `due`). */
+function CardDue({ task }: { task: Task }) {
+  if (task.column === "done") return null
+  const next = (task.checkpoints ?? [])
+    .filter((c) => c.kind !== "log" && !c.completed && c.due)
+    .sort((a, b) => a.due!.localeCompare(b.due!))[0]
+  if (!next?.due) return null
+  const today = new Date()
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+  const [, m, d] = next.due.split("-")
+  const overdue = next.due < todayIso
+  const isToday = next.due === todayIso
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+        overdue ? "border-destructive/40 bg-destructive/10 text-foreground" : isToday ? "border-chart-3/50 bg-chart-3/10 text-foreground" : "border-border/80 text-muted-foreground"
+      )}
+      title={`Próxima ação: ${next.title}`}
+    >
+      <CalendarClock className={cn("size-3", overdue ? "text-destructive" : isToday ? "text-chart-3" : "")} aria-hidden="true" />
+      {overdue ? `Vencida ${d}/${m}` : isToday ? "Vence hoje" : `Prazo ${d}/${m}`}
+    </span>
+  )
+}
+
+function CardSkeletons() {
+  return (
+    <div className="flex flex-col gap-2" aria-busy="true" aria-label="Carregando tarefas">
+      {[0, 1].map((i) => (
+        <div key={i} className="rounded-xl border border-border bg-background p-3.5">
+          <div className="skeleton h-3 w-16 rounded" />
+          <div className="skeleton mt-3 h-3.5 w-4/5 rounded" />
+          <div className="skeleton mt-2 h-3.5 w-3/5 rounded" />
+          <div className="mt-3 flex gap-1.5">
+            <div className="skeleton h-4 w-14 rounded-full" />
+            <div className="skeleton h-4 w-12 rounded-full" />
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }

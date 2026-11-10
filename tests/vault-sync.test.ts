@@ -161,6 +161,7 @@ describe("vault-sync push --dry-run", () => {
       title: "Responder ao TAC (Flavio): Atualizar o case #999.",
       completed: false,
       note: "Prazo 12-11-2026",
+      due: "2026-11-12",
     })
     expect(cps[4]).toMatchObject({ completed: true, note: "Prazo 06-11-2026 · Concluído em 09-11-2026" })
     expect(cps.every((c) => c.id.startsWith("vault-"))).toBe(true)
@@ -246,6 +247,8 @@ describe("vault-sync push/pull contra servidor", () => {
     expect(report).toContain("Call nova") // reunião sem ata no vault
     expect(report).toContain("OCT-302") // tarefa sem chamado
     expect(report).not.toContain("do vault") // lançamento que veio do próprio vault não volta
+    // bloco pronto para colar no worklog: 13:00Z = 10:00 em Brasília, fim pelas horas ITSM
+    expect(report).toContain("```text\n### 09-11-2026 | 10:00-10:30 (0.5h) | Sessao registrada no Octho\n```")
     expect(report).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u) // regra do vault: sem emojis
 
     expect(readFileSync(path.join(vault, "Chamados", "12345 Falha de acesso ao Portal via NPA.md"), "utf8")).toBe(before)

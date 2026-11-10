@@ -25,7 +25,7 @@ const MEETING_STATUS = ["planned", "completed", "cancelled"] as const
 const MAX_ITEMS = 500
 const MAX_CHECKPOINTS = 300
 
-type Checkpoint = { id: string; title: string; completed: boolean; kind?: "log" | "action"; note?: string; source: "vault" }
+type Checkpoint = { id: string; title: string; completed: boolean; kind?: "log" | "action"; note?: string; due?: string; source: "vault" }
 
 /**
  * Checkpoints vindos do vault (histórico/worklog e próximas ações do chamado).
@@ -46,6 +46,7 @@ function parseCheckpoints(v: unknown): Checkpoint[] | null {
       completed: c.completed === true,
       ...(c.kind === "log" || c.kind === "action" ? { kind: c.kind } : {}),
       ...(str(c.note, 4000) ? { note: str(c.note, 4000) } : {}),
+      ...(typeof c.due === "string" && /^\d{4}-\d{2}-\d{2}$/.test(c.due) ? { due: c.due } : {}),
       source: "vault",
     })
   }

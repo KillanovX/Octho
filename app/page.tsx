@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { StatCards } from "@/components/stat-cards"
@@ -22,6 +22,9 @@ import { InboxView } from "@/components/views/inbox-view"
 import { SettingsView } from "@/components/views/settings-view"
 import { AdminView } from "@/components/views/admin-view"
 import { MeetingsView } from "@/components/views/meetings-view"
+import { ClosingView } from "@/components/views/closing-view"
+import { ShortcutsHelp } from "@/components/shortcuts-help"
+import { useShortcuts } from "@/lib/use-shortcuts"
 
 import Image from "next/image"
 import SignInForm from "@/components/ui/sign-in-form"
@@ -98,10 +101,23 @@ function MyTasksView() {
 }
 
 export default function Page() {
-  const { activeView, isAuthenticated, isAuthLoading, isPendingApproval, isSupabaseActive, isAdmin } = useApp()
+  const { activeView, setActiveView, isAuthenticated, isAuthLoading, isPendingApproval, isSupabaseActive, isAdmin, userData } = useApp()
   const [searchOpen, setSearchOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+
+  useEffect(() => {
+    const open = () => setHelpOpen(true)
+    window.addEventListener("octho:shortcuts", open)
+    return () => window.removeEventListener("octho:shortcuts", open)
+  }, [])
+
+  useShortcuts(isAuthenticated && !isPendingApproval, {
+    go: (view) => (view !== "admin" || isAdmin) && setActiveView(view),
+    search: () => setSearchOpen(true),
+    help: () => setHelpOpen((v) => !v),
+  })
 
   const handleSelectTask = (task: Task) => {
     setSearchOpen(false)
@@ -202,6 +218,12 @@ export default function Page() {
           </ViewWrapper>
         )}
 
+        {activeView === "closing" && (
+          <ViewWrapper viewKey="closing">
+            <ClosingView />
+          </ViewWrapper>
+        )}
+
         {activeView === "time-log" && (
           <ViewWrapper viewKey="time-log">
             <TimeLogView />
@@ -234,7 +256,12 @@ export default function Page() {
       </main>
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onSelectTask={handleSelectTask} />
-      <TaskDetailsModal open={!!editTask} onClose={() => setEditTask(null)} task={editTask} />
+      <TaskDetailsModal
+        open={!!editTask}
+        onClose={() => setEditTask(null)}
+        task={editTask ? (userData.tasks.find((t) => t.id === editTask.id) ?? editTask) : null}
+      />
+      <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       <SyncErrorBanner />
     </div>
   )

@@ -1,10 +1,13 @@
 "use client"
 
-import { useState, useRef } from "react"
-import { Play, Plus, Bell, Square, RotateCcw, ChevronDown, Check, Menu } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Play, Plus, Bell, Square, RotateCcw, ChevronDown, Check, Menu, AlertTriangle } from "lucide-react"
 import { useApp, getGreeting } from "@/lib/context"
 import { TaskModal } from "@/components/task-modal"
 import { NotificationPanel } from "@/components/notification-panel"
+import { cn } from "@/lib/utils"
+
+const LONG_RUN_SECONDS = 2 * 3600
 
 // "terça-feira, 10 de novembro" -> "Terça-feira, 10 de novembro" (CSS capitalize deixaria "De Novembro")
 function todayLabel() {
@@ -27,6 +30,8 @@ export function DashboardHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const [showNewTask, setShowNewTask] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showTaskPicker, setShowTaskPicker] = useState(false)
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [note, setNote] = useState("")
 
   const activeTasks = userData.tasks.filter(t => t.column !== "done")
 
@@ -43,12 +48,44 @@ export function DashboardHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
     }
   }
 
+  const longRunning = timer.running && timer.seconds >= LONG_RUN_SECONDS
+
   // logTimerHours avisa (sem descartar) quando há menos de 1 minuto
-  const handleLogAndReset = () => logTimerHours()
+  const handleLogAndReset = () => {
+    logTimerHours(note)
+    setNote("")
+    setNoteOpen(false)
+  }
+
+  // Tempo no título da aba enquanto o timer roda
+  const clock = `${fmt(h)}:${fmt(m)}:${fmt(s)}`
+  useEffect(() => {
+    if (!timer.taskId) return
+    const base = "Octho"
+    document.title = `${timer.running ? "" : "(pausado) "}${clock} · ${timer.taskCode} — ${base}`
+    return () => {
+      document.title = base
+    }
+  }, [clock, timer.taskId, timer.taskCode, timer.running])
+
+  // Atalhos globais (ver use-shortcuts): nova tarefa e timer
+  useEffect(() => {
+    const onNew = () => setShowNewTask(true)
+    const onTimer = () => {
+      if (timer.taskId) setTimerRunning(!timer.running)
+      else setShowTaskPicker((v) => !v)
+    }
+    window.addEventListener("octho:new-task", onNew)
+    window.addEventListener("octho:toggle-timer", onTimer)
+    return () => {
+      window.removeEventListener("octho:new-task", onNew)
+      window.removeEventListener("octho:toggle-timer", onTimer)
+    }
+  }, [timer.taskId, timer.running, setTimerRunning])
 
   return (
     <>
-      <header className="flex flex-col gap-4 border-b border-border bg-background/80 px-6 py-4 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+      <header className="relative z-30 flex flex-col gap-4 border-b border-border bg-background/80 px-6 py-4 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <button
             type="button"
@@ -69,7 +106,13 @@ export function DashboardHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
 
         <div className="flex items-center gap-2">
           {/* Timer */}
-          <div className="relative flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-1.5 transition-all duration-200">
+          <div
+            className={cn(
+              "relative flex items-center gap-2 rounded-xl border bg-card px-3 py-1.5 transition-colors duration-300",
+              longRunning ? "border-chart-3/60 bg-chart-3/10" : "border-border"
+            )}
+            title={longRunning ? "Timer rodando há mais de 2h: confira se não ficou ligado por engano" : undefined}
+          >
             {timer.taskId ? (
               <>
                 <button
@@ -87,11 +130,19 @@ export function DashboardHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   {fmt(h)}:{fmt(m)}:{fmt(s)}
                 </span>
                 <span className="hidden text-xs text-muted-foreground sm:inline truncate max-w-[80px]">{timer.taskCode}</span>
+                {longRunning && (
+                  <span className="flex items-center gap-1 text-[11px] font-semibold text-foreground">
+                    <AlertTriangle className="size-3.5 text-chart-3" aria-hidden="true" />
+                    <span className="hidden md:inline">2h+</span>
+                    <span className="sr-only">Timer rodando há mais de duas horas</span>
+                  </span>
+                )}
                 {!timer.running && timer.seconds > 0 && (
                   <button
-                    onClick={handleLogAndReset}
+                    onClick={() => setNoteOpen((v) => !v)}
+                    aria-expanded={noteOpen}
                     className="flex size-5 items-center justify-center rounded-lg text-emerald-500 transition-all duration-150 hover:bg-emerald-500/10 hover:scale-110"
-                    aria-label="Registrar horas e resetar"
+                    aria-label="Registrar horas"
                     title={timer.seconds >= 60 ? "Registrar horas" : "Mínimo de 1 minuto para registrar"}
                   >
                     <Check className="size-3.5" />
@@ -114,6 +165,37 @@ export function DashboardHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
                 <span>Iniciar timer</span>
                 <ChevronDown className={`size-3 transition-transform duration-200 ${showTaskPicker ? "rotate-180" : ""}`} />
               </button>
+            )}
+
+            {noteOpen && timer.taskId && !timer.running && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleLogAndReset()
+                }}
+                className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-border bg-card p-3 shadow-xl shadow-black/10 animate-in fade-in slide-in-from-top-2 duration-200"
+              >
+                <label htmlFor="timer-note" className="text-xs font-semibold text-foreground">
+                  O que foi feito? <span className="font-normal text-muted-foreground">(vira o título no worklog)</span>
+                </label>
+                <input
+                  id="timer-note"
+                  autoFocus
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  onKeyDown={(e) => e.key === "Escape" && setNoteOpen(false)}
+                  placeholder="Ex: Análise dos logs do Publisher"
+                  className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+                />
+                <div className="mt-2 flex justify-end gap-2">
+                  <button type="button" onClick={() => setNoteOpen(false)} className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent">
+                    Cancelar
+                  </button>
+                  <button type="submit" className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+                    Registrar {clock.slice(0, 5)}
+                  </button>
+                </div>
+              </form>
             )}
 
             {/* Task Picker Dropdown */}

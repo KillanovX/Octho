@@ -23,6 +23,9 @@ import {
   Building2,
   Tag as TagIcon,
   Calendar,
+  ExternalLink,
+  ClipboardCheck,
+  Pause,
 } from "lucide-react"
 import { Task, ColumnId, Priority, TaskCheckpoint, TaskComment, TaskHistoryEvent, columns, isVaultCheckpoint } from "@/lib/data"
 import { useApp, UserProfile } from "@/lib/context"
@@ -35,6 +38,8 @@ import { getStoredClients, saveStoredClient } from "@/lib/clients-service"
 import { getStoredTags, saveStoredTags, type TagItem } from "@/lib/tags-service"
 import { cn } from "@/lib/utils"
 import { useModal } from "@/lib/use-modal"
+import { ItsmModal } from "@/components/itsm-modal"
+import { obsidianUrl } from "@/lib/obsidian"
 
 const priorityOptionsList: SelectOption<Priority>[] = [
   { value: "urgent", label: "Urgente", icon: <AlertTriangle className="size-4 text-destructive shrink-0" /> },
@@ -56,7 +61,8 @@ type TaskDetailsModalProps = {
 }
 
 export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps) {
-  const { updateTask, deleteTask, currentUser, profilesList, startTimer, reportError } = useApp()
+  const { updateTask, deleteTask, currentUser, profilesList, startTimer, pauseTimer, setTimerRunning, timer, addTimeEntry, logActivity, reportError } = useApp()
+  const [itsmOpen, setItsmOpen] = useState(false)
 
   const [activeTab, setActiveTab] = useState<"checkpoints" | "comments" | "history">("checkpoints")
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -68,7 +74,10 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
 
   // Log Hours inputs (date, time, quantity, note)
   const [isLoggingHours, setIsLoggingHours] = useState(false)
-  const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10))
+  const [logDate, setLogDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  })
   const [logTime, setLogTime] = useState(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }))
   const [logHoursInput, setLogHoursInput] = useState("")
   const [logNoteInput, setLogNoteInput] = useState("")
@@ -250,19 +259,24 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
 
   // ── Hours manual log ──
 
-  const handleLogHours = (e: React.FormEvent) => {
+  const handleLogHours = async (e: React.FormEvent) => {
     e.preventDefault()
-    const val = parseFloat(logHoursInput)
-    if (isNaN(val) || val <= 0) return
-
-    const formattedDate = logDate ? logDate.split("-").reverse().join("/") : ""
-    const timeInfo = logTime ? ` às ${logTime}` : ""
-    const noteInfo = logNoteInput.trim() ? ` — ${logNoteInput.trim()}` : ""
-
-    const newHours = (task.hoursLogged || 0) + val
-    const updatedHistory = addHistoryEvent(`Lançou +${val}h (Data: ${formattedDate}${timeInfo})${noteInfo}`)
-    updateTask(task.id, { hoursLogged: newHours, history: updatedHistory })
-
+    const val = parseFloat(logHoursInput.replace(",", "."))
+    if (isNaN(val) || val <= 0 || val > 24) {
+      reportError("Informe as horas entre 0 e 24 (ex: 1.5).")
+      return
+    }
+    const startedAt = new Date(`${logDate}T${logTime || "09:00"}:00`).getTime()
+    const entry = await addTimeEntry({
+      taskId: task.id,
+      startedAt: isNaN(startedAt) ? Date.now() : startedAt,
+      endedAt: isNaN(startedAt) ? undefined : startedAt + val * 3_600_000,
+      hours: val,
+      source: "manual",
+      note: logNoteInput.trim() || undefined,
+    })
+    if (!entry) return
+    logActivity(`lançou ${val.toFixed(2)}h em`, `${task.code} — ${task.title}`)
     setLogHoursInput("")
     setLogNoteInput("")
     setIsLoggingHours(false)
@@ -300,6 +314,19 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
             <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg border border-primary/20 shrink-0">
               {task.code}
             </span>
+            {task.externalRef && (
+              <span className="shrink-0 rounded-lg bg-muted px-2 py-1 font-mono text-[11px] font-semibold text-muted-foreground">#{task.externalRef}</span>
+            )}
+            {obsidianUrl(task.vaultPath) && (
+              <a
+                href={obsidianUrl(task.vaultPath)!}
+                className="flex shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                title={`Abrir ${task.vaultPath} no Obsidian`}
+              >
+                <ExternalLink className="size-3" aria-hidden="true" />
+                Obsidian
+              </a>
+            )}
 
             {isEditingTitle ? (
               <input
@@ -403,7 +430,7 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
                             {isLog ? (
                               <History className="size-5 text-primary/70 shrink-0 mt-0.5" />
                             ) : cp.completed ? (
-                              <CheckSquare className="size-5 text-primary shrink-0 mt-0.5" />
+                              <CheckSquare className="size-5 text-primary shrink-0 mt-0.5 motion-safe:animate-[checkPop_260ms_ease-out]" />
                             ) : (
                               <Square className="size-5 text-muted-foreground shrink-0 mt-0.5" />
                             )}
@@ -609,15 +636,28 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
                 </span>
 
                 <div className="flex items-center gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => startTimer(task.id, task.code)}
-                    className="h-8 text-xs px-2.5 rounded-lg text-emerald-500 hover:text-emerald-400"
-                    title="Iniciar cronômetro nesta tarefa"
-                  >
-                    <Play className="size-3.5 mr-1" /> Timer
-                  </Button>
+                  {timer.taskId === task.id ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => (timer.running ? pauseTimer() : setTimerRunning(true))}
+                      className={cn("h-8 text-xs px-2.5 rounded-lg", timer.running ? "text-primary" : "text-emerald-500")}
+                      title={timer.running ? "Pausar o timer desta tarefa" : "Retomar o timer desta tarefa"}
+                    >
+                      {timer.running ? <Pause className="size-3.5 mr-1" /> : <Play className="size-3.5 mr-1" />}
+                      {timer.running ? "Pausar" : "Retomar"}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => startTimer(task.id, task.code)}
+                      className="h-8 text-xs px-2.5 rounded-lg text-emerald-500 hover:text-emerald-400"
+                      title={timer.taskId ? `Trocar o timer de ${timer.taskCode} para esta tarefa` : "Iniciar cronômetro nesta tarefa"}
+                    >
+                      <Play className="size-3.5 mr-1" /> Timer
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -761,11 +801,19 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
             Excluir Tarefa
           </Button>
 
-          <Button onClick={onClose} variant="outline" className="rounded-xl h-9 text-xs">
-            Fechar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setItsmOpen(true)} variant="outline" className="rounded-xl h-9 text-xs gap-1.5">
+              <ClipboardCheck className="size-3.5" aria-hidden="true" />
+              Apontamento ITSM
+            </Button>
+            <Button onClick={onClose} variant="outline" className="rounded-xl h-9 text-xs">
+              Fechar
+            </Button>
+          </div>
         </div>
       </div>
+
+      <ItsmModal open={itsmOpen} onClose={() => setItsmOpen(false)} task={task} />
 
       <TagManagerModal
         open={isTagManagerOpen}

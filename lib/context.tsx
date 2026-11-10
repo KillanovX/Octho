@@ -19,7 +19,7 @@ import { type Meeting, type MeetingStatus } from "./meetings"
 import { loadTags } from "./tags-service"
 import { loadClients } from "./clients-service"
 import { secondsToHours } from "./hours"
-import { nextCode, computeWeeklyHours, computeActivityBreakdown, computeHoursMonth, computeCompletedThisMonth } from "./derive"
+import { positionBetween, byPosition, nextCode, computeWeeklyHours, computeActivityBreakdown, computeHoursMonth, computeCompletedThisMonth } from "./derive"
 
 // ─── User Profiles ──────────────────────────────────────────
 export type UserRole = "pending" | "member" | "admin"
@@ -36,7 +36,7 @@ export type UserProfile = {
 }
 
 // ─── Views ──────────────────────────────────────────────────
-export type ViewId = "dashboard" | "inbox" | "my-tasks" | "kanban" | "projects" | "time-log" | "reports" | "settings" | "admin" | "meetings"
+export type ViewId = "dashboard" | "inbox" | "my-tasks" | "kanban" | "projects" | "time-log" | "reports" | "settings" | "admin" | "meetings" | "closing"
 
 // ─── User Data ──────────────────────────────────────────────
 export type UserData = {
@@ -86,6 +86,10 @@ type AppContextType = {
   updateMyProfile: (updates: { name?: string; imageUrl?: string; avatarColor?: string }) => Promise<boolean>
   // Sync status
   isDataLoading: boolean
+  /** true até a primeira carga terminar (esqueletos) */
+  isInitialLoading: boolean
+  /** tarefas alteradas por outra pessoa/agente nos últimos segundos (Realtime) */
+  recentlyChangedTaskIds: Set<string>
   syncError: string | null
   dismissSyncError: () => void
   reportError: (message: string) => void
@@ -110,7 +114,7 @@ type AppContextType = {
   startTimer: (taskId: string, taskCode: string) => void
   pauseTimer: () => void
   resetTimer: () => void
-  logTimerHours: () => void
+  logTimerHours: (note?: string) => void
   setTimerRunning: (running: boolean) => void
   // Notifications
   unreadCount: number
@@ -185,6 +189,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     externalRef: (row.external_ref as string) || undefined,
     source: (row.source as string) || undefined,
     vaultPath: (row.vault_path as string) || undefined,
+    position: row.position == null ? undefined : Number(row.position),
   }
 }
 
@@ -210,6 +215,7 @@ function taskToRow(task: Task) {
     completed_at: task.completedAt ? new Date(task.completedAt).toISOString() : null,
     external_ref: task.externalRef || null,
     vault_path: task.vaultPath || null,
+    position: task.position ?? Date.now() / 1000,
   }
 }
 
@@ -321,6 +327,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [isDataLoading, setIsDataLoading] = useState(false)
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const [recentlyChangedTaskIds, setRecentlyChangedTaskIds] = useState<Set<string>>(() => new Set())
+  // ids de tarefas escritas por esta aba (para não destacar a própria alteração vinda do Realtime)
+  const localWrites = useRef(new Map<string, number>())
   const [syncError, setSyncError] = useState<string | null>(null)
   const [lastRead, setLastRead] = useState(0)
 
@@ -401,7 +411,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const [profilesRes, tasksRes, eventsRes, meetingsRes, entriesRes] = await Promise.all([
       getAllProfiles(),
-      client.from("tasks").select("*").order("created_at", { ascending: true }),
+      client.from("tasks").select("*").order("position", { ascending: true }),
       client.from("activity_events").select("*").order("created_at", { ascending: false }).limit(50),
       client.from("meetings").select("*").eq("user_id", me.id).order("date", { ascending: false }),
       client.from("time_entries").select("*").gte("started_at", since.toISOString()).order("started_at", { ascending: false }),
@@ -422,6 +432,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSyncError((e as Error).message)
     }
     setIsDataLoading(false)
+    setHasLoaded(true)
   }, [])
 
   useEffect(() => {
@@ -431,6 +442,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLastRead(readJSON<number>(`octho_last_read_${currentUser.id}`) ?? 0)
     setStoredTimer(readJSON<StoredTimer>(`octho_timer_${currentUser.id}`))
     refreshData()
+  }, [currentUser.id, isMember, refreshData])
+
+  // ── Realtime: mudanças de outras pessoas / do Hermes chegam sem recarregar ──
+  useEffect(() => {
+    const client = supabase
+    if (!client || !currentUser.id || !isMember) return
+    let debounce: ReturnType<typeof setTimeout> | null = null
+    const flashTimers: ReturnType<typeof setTimeout>[] = []
+    const schedule = () => {
+      if (debounce) clearTimeout(debounce)
+      debounce = setTimeout(() => refreshData(), 600)
+    }
+    const channel = client.channel(`octho-live-${currentUser.id}`)
+    for (const table of ["tasks", "time_entries", "meetings", "activity_events"]) {
+      channel.on("postgres_changes", { event: "*", schema: "public", table }, (payload) => {
+        if (table === "tasks") {
+          const row = (payload.new && "id" in payload.new ? payload.new : payload.old) as { id?: string } | null
+          const id = row?.id
+          const wroteAt = id ? localWrites.current.get(id) : undefined
+          if (wroteAt && Date.now() - wroteAt < 4000) return // própria escrita: estado local já está certo
+          if (id) {
+            setRecentlyChangedTaskIds((prev) => new Set(prev).add(id))
+            flashTimers.push(
+              setTimeout(
+                () =>
+                  setRecentlyChangedTaskIds((prev) => {
+                    const next = new Set(prev)
+                    next.delete(id)
+                    return next
+                  }),
+                2600
+              )
+            )
+          }
+        }
+        schedule()
+      })
+    }
+    channel.subscribe()
+    return () => {
+      if (debounce) clearTimeout(debounce)
+      flashTimers.forEach(clearTimeout)
+      client.removeChannel(channel)
+    }
   }, [currentUser.id, isMember, refreshData])
 
   /** Executa uma escrita no Supabase; em caso de erro mostra o aviso e recarrega o estado real. */
@@ -566,6 +621,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveTask = useCallback(
     (task: Task) => {
       if (!supabase) return
+      localWrites.current.set(task.id, Date.now())
       persist("Falha ao salvar tarefa", supabase.from("tasks").upsert(taskToRow(task)))
     },
     [persist]
@@ -577,11 +633,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...taskData,
         id: crypto.randomUUID(),
         code: nextCode(tasksRef.current),
+        position: positionBetween(
+          tasksRef.current.filter((t) => t.column === taskData.column).sort(byPosition).at(-1)?.position,
+          undefined
+        ),
         hoursLogged: 0,
         createdBy: userRef.current.id,
         completedAt: taskData.column === "done" ? Date.now() : undefined,
       }
       setTasks((prev) => [...prev, task])
+      localWrites.current.set(task.id, Date.now())
       logActivity("criou", `${task.code} — ${task.title}`)
       if (supabase) {
         persist("Falha ao criar tarefa", supabase.from("tasks").insert({ ...taskToRow(task), user_id: userRef.current.id }))
@@ -610,6 +671,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const task = tasksRef.current.find((t) => t.id === id)
       if (!task) return
       setTasks((prev) => prev.filter((t) => t.id !== id))
+      localWrites.current.set(id, Date.now())
       logActivity("excluiu", `${task.code} — ${task.title}`)
       if (supabase) persist("Falha ao excluir tarefa", supabase.from("tasks").delete().eq("id", id))
     },
@@ -621,28 +683,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const task = tasksRef.current.find((t) => t.id === id)
       if (!task) return
       const colName = columns.find((c) => c.id === column)?.name ?? column
+
+      // nova posição: antes do card de destino, ou no fim da coluna
+      const siblings = tasksRef.current.filter((t) => t.column === column && t.id !== id).sort(byPosition)
+      const overIdx = overTaskId ? siblings.findIndex((t) => t.id === overTaskId) : -1
+      const position =
+        overIdx >= 0
+          ? positionBetween(siblings[overIdx - 1]?.position, siblings[overIdx].position)
+          : positionBetween(siblings.at(-1)?.position, undefined)
+
+      if (task.column === column && overTaskId === id) return
       const updated: Task = {
         ...task,
         column,
+        position,
         completedAt: column === task.column ? task.completedAt : column === "done" ? Date.now() : undefined,
       }
-
-      setTasks((prev) => {
-        const clean = prev.filter((t) => t.id !== id)
-        let insertIndex = clean.length
-        if (overTaskId) {
-          const idx = clean.findIndex((t) => t.id === overTaskId)
-          if (idx !== -1) insertIndex = idx
-        }
-        const next = [...clean]
-        next.splice(insertIndex, 0, updated)
-        return next
-      })
-
-      if (task.column !== column) {
-        saveTask(updated)
-        logActivity(`moveu para ${colName}`, `${task.code} — ${task.title}`)
-      }
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      saveTask(updated)
+      if (task.column !== column) logActivity(`moveu para ${colName}`, `${task.code} — ${task.title}`)
     },
     [logActivity, saveTask]
   )
@@ -660,6 +719,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const entry: TimeEntry = { ...input, hours, id: crypto.randomUUID(), userId: me.id }
       setTimeEntries((prev) => [entry, ...prev])
       if (entry.taskId) {
+        localWrites.current.set(entry.taskId, Date.now()) // o trigger atualiza tasks.hours_logged
         setTasks((prev) => prev.map((t) => (t.id === entry.taskId ? { ...t, hoursLogged: Math.round((t.hoursLogged + hours) * 100) / 100 } : t)))
       }
       const ok = await persist(
@@ -724,7 +784,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pauseTimer = useCallback(() => setTimerRunning(false), [setTimerRunning])
   const resetTimer = useCallback(() => saveTimer(null), [saveTimer])
 
-  const logTimerHours = useCallback(() => {
+  const logTimerHours = useCallback((note?: string) => {
     const cur = storedTimer
     if (!cur) return
     const end = Date.now()
@@ -735,7 +795,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const task = tasksRef.current.find((t) => t.id === cur.taskId)
     const hours = secondsToHours(ms / 1000)
-    addTimeEntry({ taskId: cur.taskId, startedAt: cur.firstStartedAt, endedAt: end, hours, source: "timer" }).then((entry) => {
+    addTimeEntry({ taskId: cur.taskId, startedAt: cur.firstStartedAt, endedAt: end, hours, source: "timer", note: note?.trim() || undefined }).then((entry) => {
       if (entry && task) logActivity(`registrou ${hours.toFixed(2)}h em`, `${task.code} — ${task.title}`)
     })
     saveTimer(null)
@@ -834,6 +894,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isSupabaseActive: isSupabaseConfigured(),
     updateMyProfile,
     isDataLoading,
+    isInitialLoading: isMember && !hasLoaded,
+    recentlyChangedTaskIds,
     syncError,
     dismissSyncError: () => setSyncError(null),
     reportError: setSyncError,

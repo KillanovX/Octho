@@ -19,6 +19,8 @@ export type TaskCheckpoint = {
   kind?: "log" | "action"
   /** Detalhes (tópicos do worklog, prazo da ação) */
   note?: string
+  /** Prazo da ação (AAAA-MM-DD), vindo do campo [due:: ] do Tasks no vault */
+  due?: string
   /** "vault": sincronizado do Obsidian; ids começam com "vault-" e são substituídos a cada push */
   source?: "vault"
 }
@@ -60,6 +62,8 @@ export type Task = {
   comments?: TaskComment[]
   history?: TaskHistoryEvent[]
   createdBy?: string // user_id do criador
+  /** Ordem dentro da coluna (fracionária) */
+  position?: number
   completedAt?: number
   // Integração Obsidian / Hermes
   externalRef?: string // ID do chamado ITSM (ex: 12345)

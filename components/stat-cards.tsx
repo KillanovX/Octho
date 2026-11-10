@@ -3,9 +3,11 @@
 import { Clock, CalendarDays, CheckCircle2, ListTodo, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/context"
+import { AnimatedNumber } from "@/components/animated-number"
+import { formatHours } from "@/lib/hours"
 
 export function StatCards() {
-  const { userData, hoursMonth, completedTasksMonth, setActiveView } = useApp()
+  const { userData, hoursMonth, completedTasksMonth, setActiveView, isInitialLoading } = useApp()
 
   const dayMap = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
   const todayStr = dayMap[new Date().getDay()]
@@ -29,6 +31,8 @@ export function StatCards() {
     {
       label: "Horas hoje",
       value: hoursTodayStr,
+      num: hoursVal,
+      fmt: (n: number) => formatHours(n),
       sub: goalStr,
       icon: Clock,
       gradient: "from-blue-500/20 to-blue-600/5",
@@ -39,6 +43,8 @@ export function StatCards() {
     {
       label: "Horas no mês",
       value: `${hoursMonth}h`,
+      num: hoursMonth,
+      fmt: (n: number) => `${Math.round(n * 10) / 10}h`,
       sub: `${capMonth} · meta 160h`,
       icon: CalendarDays,
       gradient: "from-violet-500/20 to-violet-600/5",
@@ -49,6 +55,8 @@ export function StatCards() {
     {
       label: "Tarefas concluídas",
       value: `${completedTasksMonth}`,
+      num: completedTasksMonth,
+      fmt: (n: number) => String(Math.round(n)),
       sub: "Neste mês",
       icon: CheckCircle2,
       gradient: "from-emerald-500/20 to-emerald-600/5",
@@ -59,6 +67,8 @@ export function StatCards() {
     {
       label: "Tarefas ativas",
       value: `${activeCount}`,
+      num: activeCount,
+      fmt: (n: number) => String(Math.round(n)),
       sub: `${todoCount} a fazer · ${progressCount} em progresso`,
       icon: ListTodo,
       gradient: "from-amber-500/20 to-amber-600/5",
@@ -92,7 +102,7 @@ export function StatCards() {
             </span>
 
             <p className="mt-4 text-2xl font-bold tracking-tight text-card-foreground tabular-nums">
-              {s.value}
+              {isInitialLoading ? <span className="skeleton inline-block h-7 w-14 rounded" aria-label="Carregando" /> : <AnimatedNumber value={s.num} format={s.fmt} />}
             </p>
             <p className="text-sm font-semibold text-card-foreground mt-0.5">{s.label}</p>
             <p className="mt-1 text-xs text-muted-foreground">{s.sub}</p>

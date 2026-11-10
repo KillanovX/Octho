@@ -14,6 +14,19 @@ export const WEEK_DAYS = [
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+/**
+ * Posição fracionária entre dois vizinhos (undefined = ponta da lista).
+ * Inserir entre dois cards não exige renumerar os demais.
+ */
+export function positionBetween(before?: number, after?: number): number {
+  if (before === undefined && after === undefined) return Date.now() / 1000
+  if (before === undefined) return after! - 1
+  if (after === undefined) return before + 1
+  return (before + after) / 2
+}
+
+export const byPosition = (a: { position?: number }, b: { position?: number }) => (a.position ?? 0) - (b.position ?? 0)
+
 /** Próximo código OCT-n (mínimo OCT-301). */
 export function nextCode(tasks: Pick<Task, "code">[] = []): string {
   let maxNum = 300

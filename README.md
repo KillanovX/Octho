@@ -22,6 +22,7 @@ Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · shadcn ·
 | `SUPABASE_SERVICE_ROLE_KEY` | servidor | painel Admin e API do agente |
 | `OCTHO_AGENT_TOKEN` | servidor | token do Hermes Agent (32+ caracteres) |
 | `OCTHO_AGENT_USER_ID` | servidor | usuário em nome de quem o agente grava |
+| `NEXT_PUBLIC_OBSIDIAN_VAULT` | cliente | nome do vault para o link "Abrir no Obsidian" (padrão `Brain`) |
 
 ## Acesso e papéis
 
@@ -32,6 +33,20 @@ Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · shadcn ·
 ## Horas
 
 `time_entries` é a fonte única das horas (timer, reunião, manual, agente). `tasks.hours_logged` é recalculado por trigger. Relatórios e Registro de horas filtram por período a partir desses lançamentos; o CSV inclui a coluna de horas para apontamento ITSM (blocos de 30 min, arredondados para cima).
+
+## Apontamento ITSM
+
+- **Tarefa > Apontamento ITSM:** sessões no formato do worklog do vault (`### DD-MM-AAAA | HH:MM-HH:MM (0.5h) | Título`) e minuta para o SControl, com cópia em um clique.
+- **Fechamento do dia:** horas faturáveis (tarefas com chamado) e internas, sessões e minutas por chamado, e alertas (timer ligado, lançamento sem tarefa, sessão sem horário).
+- **Timer:** inicia no card do Kanban, no modal da tarefa ou com `T`; ao registrar pede "o que foi feito" (vira o título no worklog); avisa quando passa de 2h e mostra o tempo no título da aba.
+
+## Atalhos
+
+`N` nova tarefa · `T` timer · `/` ou `Ctrl K` busca · `?` lista de atalhos · `G` e depois `D` dashboard, `K` Kanban, `H` horas, `F` fechamento, `R` relatórios, `I` caixa de entrada, `M` minhas tarefas, `P` projetos, `U` reuniões, `C` configurações.
+
+## Tempo real
+
+Tarefas, horas, reuniões e o feed chegam via Supabase Realtime (respeitando o RLS); cards alterados por outra pessoa ou pelo Hermes piscam por alguns segundos.
 
 ## Rotas de servidor
 

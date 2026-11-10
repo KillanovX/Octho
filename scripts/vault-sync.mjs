@@ -138,6 +138,7 @@ export function parseActions(ref, sectionText) {
       title: title.slice(0, 500),
       completed: m[1].toLowerCase() === "x",
       kind: "action",
+      ...(/^\d{4}-\d{2}-\d{2}$/.test(fields.due ?? "") ? { due: fields.due } : {}),
       ...(notes.length ? { note: notes.join(" · ") } : {}),
     })
   }
@@ -374,6 +375,11 @@ const fmtDate = (iso) => {
   return `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()}`
 }
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })
+/** "DD-MM-AAAA | HH:MM-HH:MM (0.5h) | Título" no fuso de Brasília (formato do AGENTS.md) */
+export function worklogHeading(startIso, endIso, hoursItsm, note) {
+  const title = String(note ?? "").trim() || "Sessao registrada no Octho"
+  return `${fmtDate(startIso)} | ${fmtTime(startIso)}-${fmtTime(endIso)} (${Number(hoursItsm).toFixed(1)}h) | ${title}`
+}
 const cell = (v) => String(v ?? "").replace(/\|/g, "/").replace(/\r?\n/g, " ")
 
 function renderReport(data, todayIso) {
@@ -422,6 +428,13 @@ function renderReport(data, todayIso) {
       )
     }
     lines.push(`| **Total** | | | | **${total.toFixed(2)}** | **${totalItsm.toFixed(1)}** | |`, "")
+    // Mesmo conteúdo no formato do worklog do chamado, pronto para colar (fim = início + horas ITSM)
+    lines.push("Pronto para colar em `Histórico e worklog`:", "", "```text")
+    for (const e of [...list].sort((x, y) => String(y.started_at).localeCompare(String(x.started_at)))) {
+      const endIso = new Date(new Date(e.started_at).getTime() + e.hours_itsm * 3_600_000).toISOString()
+      lines.push(`### ${worklogHeading(e.started_at, endIso, e.hours_itsm, e.note)}`)
+    }
+    lines.push("```", "")
   }
   lines.push("## Reuniões criadas no Octho (sem ata no vault)", "")
   if (!newMeetings.length) lines.push("Nenhuma.", "")

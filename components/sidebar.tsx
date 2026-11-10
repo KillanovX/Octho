@@ -19,6 +19,7 @@ import {
   Video,
   Camera,
   X,
+  ClipboardCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp, type ViewId } from "@/lib/context"
@@ -39,6 +40,7 @@ const workspace: NavDef[] = [
   { name: "Projetos", icon: Layers, view: "projects" },
   { name: "Reuniões", icon: Video, view: "meetings" },
   { name: "Registro de horas", icon: Clock, view: "time-log" },
+  { name: "Fechamento do dia", icon: ClipboardCheck, view: "closing" },
   { name: "Relatórios", icon: BarChart3, view: "reports" },
 ]
 
@@ -144,6 +146,17 @@ export function Sidebar({ onOpenSearch, mobileOpen = false, onMobileClose }: Sid
       </nav>
 
       <div className="mt-auto relative">
+        <button
+          type="button"
+          onClick={() => {
+            onMobileClose?.()
+            window.dispatchEvent(new Event("octho:shortcuts"))
+          }}
+          className="mb-1 hidden w-full items-center justify-between rounded-xl px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground lg:flex"
+        >
+          Atalhos de teclado
+          <kbd className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-[10px]">?</kbd>
+        </button>
         <NavItem
           icon={Settings}
           label="Configurações"

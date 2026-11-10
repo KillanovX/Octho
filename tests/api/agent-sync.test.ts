@@ -118,7 +118,8 @@ describe("POST /api/agent/sync", () => {
             title: "A",
             checkpoints: [
               { id: "vault-log-a", title: "05-11 log", completed: true, kind: "log", note: "detalhe" },
-              { id: "act-sem-prefixo", title: "Acao", completed: false, kind: "action" },
+              { id: "act-sem-prefixo", title: "Acao", completed: false, kind: "action", due: "2026-11-12" },
+              { id: "vault-due-ruim", title: "Due invalido", completed: false, kind: "action", due: "12/11/2026" },
               { id: "", title: "sem id" },
               { id: "vault-x", title: "" },
             ],
@@ -129,7 +130,8 @@ describe("POST /api/agent/sync", () => {
     const task = fake.current.tables.tasks[0]
     expect(task.checkpoints).toEqual([
       { id: "vault-log-a", title: "05-11 log", completed: true, kind: "log", note: "detalhe", source: "vault" },
-      { id: "vault-act-sem-prefixo", title: "Acao", completed: false, kind: "action", source: "vault" },
+      { id: "vault-act-sem-prefixo", title: "Acao", completed: false, kind: "action", due: "2026-11-12", source: "vault" },
+      { id: "vault-due-ruim", title: "Due invalido", completed: false, kind: "action", source: "vault" },
     ])
 
     // usuário adiciona um checkpoint próprio no app
