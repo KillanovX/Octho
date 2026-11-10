@@ -15,7 +15,15 @@ export type TaskCheckpoint = {
   id: string
   title: string
   completed: boolean
+  /** log = entrada do histórico/worklog do chamado; action = próxima ação */
+  kind?: "log" | "action"
+  /** Detalhes (tópicos do worklog, prazo da ação) */
+  note?: string
+  /** "vault": sincronizado do Obsidian; ids começam com "vault-" e são substituídos a cada push */
+  source?: "vault"
 }
+
+export const isVaultCheckpoint = (c: Pick<TaskCheckpoint, "id">) => c.id.startsWith("vault-")
 
 export type TaskComment = {
   id: string

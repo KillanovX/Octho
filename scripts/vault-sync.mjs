@@ -102,6 +102,76 @@ function mapColumn(status) {
 // Worklog: "### DD-MM-AAAA | HH:MM-HH:MM (0.0h) | Título" ou "### DD-MM-AAAA | horario nao registrado (0.5h) | Título"
 const WORKLOG_RE = /^### (\d{2}-\d{2}-\d{4}) \| (?:(\d{2}:\d{2})-(\d{2}:\d{2})|([^|(]*?))\s*\((\d+(?:[.,]\d+)?)h\) \| (.+)$/
 
+// Próxima ação: "- [ ] Texto [due:: AAAA-MM-DD] [priority:: high]"
+const ACTION_RE = /^\s*- \[( |x|X)\] (.+)$/
+const INLINE_FIELD_RE = /\[(\w+):: ([^\]]*)\]/g
+const isoToDmy = (iso) => {
+  const [y, m, d] = String(iso).trim().split("-")
+  return d && m && y ? `${d}-${m}-${y}` : String(iso)
+}
+
+/** Remove markdown leve para exibir no app: negrito, wikilinks, campos inline do Tasks. */
+function plain(text) {
+  return text
+    .replace(INLINE_FIELD_RE, "")
+    .replace(/\[\[(?:[^\]|]*\|)?([^\]]+)\]\]/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+/** Próximas ações do chamado viram checkpoints acionáveis (estado do checkbox preservado). */
+export function parseActions(ref, sectionText) {
+  const out = []
+  for (const line of sectionText.split(/\r?\n/)) {
+    const m = line.match(ACTION_RE)
+    if (!m) continue
+    const fields = Object.fromEntries([...m[2].matchAll(INLINE_FIELD_RE)].map(([, k, v]) => [k, v.trim()]))
+    const title = plain(m[2])
+    if (!title) continue
+    const notes = []
+    if (fields.due) notes.push(`Prazo ${isoToDmy(fields.due)}`)
+    if (fields.scheduled) notes.push(`Agendado ${isoToDmy(fields.scheduled)}`)
+    if (fields.completion) notes.push(`Concluído em ${isoToDmy(fields.completion)}`)
+    out.push({
+      id: `vault-act-${hash(`${ref}|${title}`)}`,
+      title: title.slice(0, 500),
+      completed: m[1].toLowerCase() === "x",
+      kind: "action",
+      ...(notes.length ? { note: notes.join(" · ") } : {}),
+    })
+  }
+  return out
+}
+
+/**
+ * Worklog do chamado: cada "### DD-MM-AAAA | ..." vira uma entrada com os tópicos
+ * de primeiro nível logo abaixo (evidências em "####" ficam de fora).
+ */
+export function parseWorklog(sectionText) {
+  const entries = []
+  let cur = null
+  let inEvidence = false
+  for (const raw of sectionText.split(/\r?\n/)) {
+    const line = raw.trimEnd()
+    const m = line.trim().match(WORKLOG_RE)
+    if (m) {
+      cur = { m, bullets: [] }
+      entries.push(cur)
+      inEvidence = false
+      continue
+    }
+    if (!cur) continue
+    if (/^#{4,} /.test(line.trim())) inEvidence = true
+    else if (/^#{1,3} /.test(line.trim())) {
+      cur = null
+      continue
+    }
+    if (!inEvidence && /^- /.test(line)) cur.bullets.push(plain(line.slice(2)))
+  }
+  return entries
+}
+
 export async function readChamados() {
   const tasks = []
   const worklog = []
@@ -118,7 +188,7 @@ export async function readChamados() {
     const title = h1.replace(/^\[?#?\d+\]?\s*-\s*/, "").trim()
     const situacao = section(body, "Situação atual").replace(/\n?---\s*$/, "").trim()
 
-    tasks.push({
+    const task = {
       externalRef: ref,
       title,
       column: mapColumn(data.status),
@@ -126,11 +196,11 @@ export async function readChamados() {
       client: data.cliente ? String(data.cliente) : undefined,
       description: situacao ? situacao.slice(0, 8000) : undefined,
       vaultPath: rel(file),
-    })
+    }
+    tasks.push(task)
 
-    for (const line of section(body, "Histórico e worklog").split(/\r?\n/)) {
-      const m = line.trim().match(WORKLOG_RE)
-      if (!m) continue
+    const logCheckpoints = []
+    for (const { m, bullets } of parseWorklog(section(body, "Histórico e worklog"))) {
       const [, dmy, start, end, noTime, hoursRaw, entryTitle] = m
       const date = dmyToIso(dmy)
       const hours = Number(hoursRaw.replace(",", "."))
@@ -149,7 +219,21 @@ export async function readChamados() {
           note: hasTime ? entryTitle.trim() : `${entryTitle.trim()} (horario nao registrado no vault)`,
         },
       })
+      logCheckpoints.push({
+        sortKey: `${date} ${start ?? "09:00"}`,
+        id: `vault-log-${hash(`${ref}|${dmy}|${start ?? noTime?.trim()}|${entryTitle.trim()}`)}`,
+        title: `${dmy} ${hasTime ? `${start}-${end}` : "horario nao registrado"} (${hoursRaw}h) | ${plain(entryTitle)}`.slice(0, 500),
+        completed: true,
+        kind: "log",
+        ...(bullets.length ? { note: bullets.join("\n").slice(0, 4000) } : {}),
+      })
     }
+
+    // Checkpoints da tarefa: histórico em ordem cronológica, depois as próximas ações
+    task.checkpoints = [
+      ...logCheckpoints.sort((a, b) => a.sortKey.localeCompare(b.sortKey)).map(({ sortKey, ...c }) => c),
+      ...parseActions(ref, section(body, "Próximas ações")),
+    ]
   }
   return { tasks, worklog, warnings }
 }

@@ -23,6 +23,42 @@ const COLUMNS = ["backlog", "todo", "in_progress", "done"] as const
 const PRIORITIES = ["urgent", "high", "medium", "low", "none"] as const
 const MEETING_STATUS = ["planned", "completed", "cancelled"] as const
 const MAX_ITEMS = 500
+const MAX_CHECKPOINTS = 300
+
+type Checkpoint = { id: string; title: string; completed: boolean; kind?: "log" | "action"; note?: string; source: "vault" }
+
+/**
+ * Checkpoints vindos do vault (histórico/worklog e próximas ações do chamado).
+ * Todos recebem id "vault-*"; retorna null quando o campo não foi enviado.
+ */
+function parseCheckpoints(v: unknown): Checkpoint[] | null {
+  if (!Array.isArray(v)) return null
+  const out: Checkpoint[] = []
+  for (const item of v.slice(0, MAX_CHECKPOINTS)) {
+    if (!item || typeof item !== "object") continue
+    const c = item as Record<string, unknown>
+    const id = str(c.id, 120)
+    const title = str(c.title, 500)
+    if (!id || !title) continue
+    out.push({
+      id: id.startsWith("vault-") ? id : `vault-${id}`,
+      title,
+      completed: c.completed === true,
+      ...(c.kind === "log" || c.kind === "action" ? { kind: c.kind } : {}),
+      ...(str(c.note, 4000) ? { note: str(c.note, 4000) } : {}),
+      source: "vault",
+    })
+  }
+  return out
+}
+
+/** Mantém os checkpoints criados no app e substitui os do vault. */
+function mergeCheckpoints(existing: unknown, fromVault: Checkpoint[]) {
+  const own = (Array.isArray(existing) ? existing : []).filter(
+    (c) => c && typeof c === "object" && !String((c as { id?: unknown }).id ?? "").startsWith("vault-")
+  )
+  return [...fromVault, ...own]
+}
 
 type ItemResult = { key: string; status: "created" | "updated" | "error"; id?: string; error?: string }
 
@@ -44,11 +80,11 @@ function isoDate(v: unknown): string | undefined {
 
 async function findTaskByRef(admin: SupabaseClient, ref?: string, code?: string) {
   if (ref) {
-    const { data } = await admin.from("tasks").select("id, code, title, column").eq("external_ref", ref).maybeSingle()
+    const { data } = await admin.from("tasks").select("id, code, title, column, checkpoints").eq("external_ref", ref).maybeSingle()
     if (data) return data
   }
   if (code) {
-    const { data } = await admin.from("tasks").select("id, code, title, column").eq("code", code).limit(1).maybeSingle()
+    const { data } = await admin.from("tasks").select("id, code, title, column, checkpoints").eq("code", code).limit(1).maybeSingle()
     if (data) return data
   }
   return null
@@ -72,10 +108,12 @@ async function upsertTask(admin: SupabaseClient, agentUserId: string, raw: Recor
   if (raw.description !== undefined) fields.description = str(raw.description, 20000) ?? null
   if (raw.vaultPath !== undefined) fields.vault_path = str(raw.vaultPath, 500) ?? null
   if (typeof raw.estimate === "number" && raw.estimate >= 0) fields.estimate = raw.estimate
+  const vaultCheckpoints = parseCheckpoints(raw.checkpoints)
 
   const existing = await findTaskByRef(admin, externalRef)
   if (existing) {
     if (existing.column === "done" && column === "done") delete fields.completed_at
+    if (vaultCheckpoints) fields.checkpoints = mergeCheckpoints(existing.checkpoints, vaultCheckpoints)
     const { error } = await admin.from("tasks").update(fields).eq("id", existing.id)
     return error ? { key: externalRef, status: "error", error: error.message } : { key: externalRef, status: "updated", id: existing.id }
   }
@@ -95,6 +133,7 @@ async function upsertTask(admin: SupabaseClient, agentUserId: string, raw: Recor
       assignee_avatar: owner?.avatar ?? null,
       assignee_color: owner?.avatar_color ?? "#888",
       labels: [],
+      checkpoints: vaultCheckpoints ?? [],
     })
     .select("id")
     .single()

@@ -28,10 +28,22 @@ Aguardando validacao do cliente.
 
 ---
 
+## Próximas ações
+
+- [ ] **Responder ao TAC (Flavio):** Atualizar o case [[Outra nota|#999]]. [due:: 2026-11-12] [priority:: high]
+
+- [x] **Validacao final:** Acesso confirmado. [due:: 2026-11-06] [completion:: 2026-11-09]
+
+---
+
 ## Histórico e worklog
 
 ### 09-11-2026 | 10:00-11:00 (1.0h) | Sufixo DNS aplicado
-Detalhes da sessao.
+- Sufixo **aplicado** via CMD.
+- Acesso validado.
+
+#### Evidencias
+- log longo que nao deve entrar
 
 ### 05-11-2026 | horario nao registrado (0.5h) | Analise inicial
 
@@ -127,6 +139,31 @@ describe("vault-sync push --dry-run", () => {
     // lançamento do mesmo chamado/dia e início próximo da ata é ligado a ela
     const sso = entries.find((e: { note: string }) => e.note === "Validacao SSO")
     expect(sso.granolaId).toBe("abc-123")
+  })
+
+  it("histórico e próximas ações do chamado viram checkpoints da tarefa", async () => {
+    const { stdout } = await run("node", [SCRIPT, "push", "--dry-run"], { env: env() })
+    const [task] = JSON.parse(stdout).tasks
+    const cps = task.checkpoints as { id: string; title: string; completed: boolean; kind: string; note?: string }[]
+
+    // histórico em ordem cronológica, todo concluído, depois as ações
+    expect(cps.map((c) => c.kind)).toEqual(["log", "log", "log", "action", "action"])
+    expect(cps.slice(0, 3).map((c) => c.title)).toEqual([
+      "05-11-2026 horario nao registrado (0.5h) | Analise inicial",
+      "05-11-2026 14:00-14:30 (0.5h) | Validacao SSO",
+      "09-11-2026 10:00-11:00 (1.0h) | Sufixo DNS aplicado",
+    ])
+    expect(cps.slice(0, 3).every((c) => c.completed)).toBe(true)
+    // tópicos de primeiro nível viram nota; evidências (####) ficam de fora; markdown limpo
+    expect(cps[2].note).toBe("Sufixo aplicado via CMD.\nAcesso validado.")
+
+    expect(cps[3]).toMatchObject({
+      title: "Responder ao TAC (Flavio): Atualizar o case #999.",
+      completed: false,
+      note: "Prazo 12-11-2026",
+    })
+    expect(cps[4]).toMatchObject({ completed: true, note: "Prazo 06-11-2026 · Concluído em 09-11-2026" })
+    expect(cps.every((c) => c.id.startsWith("vault-"))).toBe(true)
   })
 
   it("externalId é estável entre execuções (idempotência)", async () => {

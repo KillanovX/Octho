@@ -109,6 +109,42 @@ describe("POST /api/agent/sync", () => {
     expect(fake.current.tables.time_entries).toHaveLength(1)
   })
 
+  it("checkpoints do vault substituem só os do vault e preservam os criados no app", async () => {
+    await POST(
+      req("POST", {
+        tasks: [
+          {
+            externalRef: "1",
+            title: "A",
+            checkpoints: [
+              { id: "vault-log-a", title: "05-11 log", completed: true, kind: "log", note: "detalhe" },
+              { id: "act-sem-prefixo", title: "Acao", completed: false, kind: "action" },
+              { id: "", title: "sem id" },
+              { id: "vault-x", title: "" },
+            ],
+          },
+        ],
+      })
+    )
+    const task = fake.current.tables.tasks[0]
+    expect(task.checkpoints).toEqual([
+      { id: "vault-log-a", title: "05-11 log", completed: true, kind: "log", note: "detalhe", source: "vault" },
+      { id: "vault-act-sem-prefixo", title: "Acao", completed: false, kind: "action", source: "vault" },
+    ])
+
+    // usuário adiciona um checkpoint próprio no app
+    ;(task.checkpoints as unknown[]).push({ id: "app-1", title: "Meu item", completed: false })
+
+    await POST(
+      req("POST", { tasks: [{ externalRef: "1", checkpoints: [{ id: "vault-log-b", title: "novo log", completed: true, kind: "log" }] }] })
+    )
+    expect((fake.current.tables.tasks[0].checkpoints as { id: string }[]).map((c) => c.id)).toEqual(["vault-log-b", "app-1"])
+
+    // sem o campo checkpoints, nada muda
+    await POST(req("POST", { tasks: [{ externalRef: "1", title: "A2" }] }))
+    expect((fake.current.tables.tasks[0].checkpoints as { id: string }[]).map((c) => c.id)).toEqual(["vault-log-b", "app-1"])
+  })
+
   it("gera códigos sequenciais a partir do maior OCT existente", async () => {
     fake.current.tables.tasks = [{ id: "x", code: "OCT-410" }]
     await POST(req("POST", { tasks: [{ externalRef: "a", title: "A" }, { externalRef: "b", title: "B" }] }))

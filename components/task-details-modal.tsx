@@ -24,7 +24,7 @@ import {
   Tag as TagIcon,
   Calendar,
 } from "lucide-react"
-import { Task, ColumnId, Priority, TaskCheckpoint, TaskComment, TaskHistoryEvent, columns } from "@/lib/data"
+import { Task, ColumnId, Priority, TaskCheckpoint, TaskComment, TaskHistoryEvent, columns, isVaultCheckpoint } from "@/lib/data"
 import { useApp, UserProfile } from "@/lib/context"
 import { Select, SelectOption } from "@/components/ui/select"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -110,8 +110,10 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
     },
   ]
 
-  const completedCheckpoints = checkpoints.filter((c) => c.completed).length
-  const progressPercent = checkpoints.length > 0 ? Math.round((completedCheckpoints / checkpoints.length) * 100) : 0
+  // Progresso considera só itens acionáveis; entradas de histórico (kind "log") são registro
+  const actionable = checkpoints.filter((c) => c.kind !== "log")
+  const completedCheckpoints = actionable.filter((c) => c.completed).length
+  const progressPercent = actionable.length > 0 ? Math.round((completedCheckpoints / actionable.length) * 100) : 0
 
   const userOptions: SelectOption<string>[] = allUsers.map((u) => ({
     value: u.name,
@@ -361,7 +363,7 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground font-medium">Progresso dos Checkpoints</span>
                       <span className="font-bold text-foreground">
-                        {completedCheckpoints} de {checkpoints.length} ({progressPercent}%)
+                        {completedCheckpoints} de {actionable.length} ({progressPercent}%)
                       </span>
                     </div>
                     <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
@@ -377,36 +379,64 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
                       Nenhum checkpoint adicionado a esta tarefa.
                     </p>
                   ) : (
-                    checkpoints.map((cp) => (
-                      <div
-                        key={cp.id}
-                        className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors group"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleToggleCheckpoint(cp.id)}
-                          className="flex items-center gap-3 text-left flex-1"
+                    checkpoints.map((cp) => {
+                      const fromVault = isVaultCheckpoint(cp)
+                      const isLog = cp.kind === "log"
+                      return (
+                        <div
+                          key={cp.id}
+                          className="flex items-start justify-between gap-3 p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors group"
                         >
-                          {cp.completed ? (
-                            <CheckSquare className="size-5 text-primary shrink-0" />
-                          ) : (
-                            <Square className="size-5 text-muted-foreground shrink-0" />
-                          )}
-                          <span className={`text-sm ${cp.completed ? "line-through text-muted-foreground" : "text-foreground font-medium"}`}>
-                            {cp.title}
-                          </span>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => !isLog && handleToggleCheckpoint(cp.id)}
+                            disabled={isLog}
+                            title={fromVault ? "Sincronizado do vault Obsidian: o estado do chamado prevalece no próximo sync" : undefined}
+                            className="flex items-start gap-3 text-left flex-1 disabled:cursor-default"
+                          >
+                            {isLog ? (
+                              <History className="size-5 text-primary/70 shrink-0 mt-0.5" />
+                            ) : cp.completed ? (
+                              <CheckSquare className="size-5 text-primary shrink-0 mt-0.5" />
+                            ) : (
+                              <Square className="size-5 text-muted-foreground shrink-0 mt-0.5" />
+                            )}
+                            <span className="flex min-w-0 flex-col gap-1">
+                              <span
+                                className={`text-sm ${
+                                  isLog
+                                    ? "text-foreground"
+                                    : cp.completed
+                                    ? "line-through text-muted-foreground"
+                                    : "text-foreground font-medium"
+                                }`}
+                              >
+                                {cp.title}
+                              </span>
+                              {cp.note && (
+                                <span className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">{cp.note}</span>
+                              )}
+                              {fromVault && (
+                                <span className="w-fit rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                  {isLog ? "Histórico do chamado" : "Ação do chamado"} · vault
+                                </span>
+                              )}
+                            </span>
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCheckpoint(cp.id)}
-                          className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Excluir Checkpoint"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
-                    ))
+                          {!fromVault && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCheckpoint(cp.id)}
+                              className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Excluir Checkpoint"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })
                   )}
                 </div>
 
