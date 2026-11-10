@@ -42,6 +42,9 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
   const { tasks } = userData
 
   const [priorityFilter, setPriorityFilter] = useState<string>("all")
+  // No mobile (< md) o quadro vira lista: uma coluna por vez, escolhida nas abas
+  const [mobileColumn, setMobileColumn] = useState<ColumnId>("in_progress")
+  const visible = (t: Task) => priorityFilter === "all" || t.priority === priorityFilter
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [createColumn, setCreateColumn] = useState<ColumnId | null>(null)
   const [dragOverCol, setDragOverCol] = useState<ColumnId | null>(null)
@@ -108,7 +111,10 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 bg-card/80">
           <div>
             <h2 className="text-sm font-semibold text-card-foreground">Quadro Kanban</h2>
-            <p className="text-xs text-muted-foreground">Arraste os cards entre as colunas para atualizar o status</p>
+            <p className="text-xs text-muted-foreground">
+              <span className="hidden md:inline">Arraste os cards entre as colunas para atualizar o status</span>
+              <span className="md:hidden">Toque em um card para ver detalhes e mudar o status</span>
+            </p>
           </div>
           <div className="w-52">
             <Select
@@ -120,17 +126,47 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
           </div>
         </div>
 
-        <div className="flex gap-4 overflow-x-auto p-4 snap-x snap-mandatory sm:snap-none">
+        {/* Abas de coluna (somente mobile) */}
+        <div role="tablist" aria-label="Colunas do quadro" className="flex gap-1 overflow-x-auto border-b border-border px-3 pt-3 md:hidden">
           {columns.map((col) => {
-            const colTasks = tasks.filter(
-              (t) => t.column === col.id && (priorityFilter === "all" || t.priority === priorityFilter)
+            const count = tasks.filter((t) => t.column === col.id && visible(t)).length
+            const selected = mobileColumn === col.id
+            return (
+              <button
+                key={col.id}
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setMobileColumn(col.id)}
+                className={cn(
+                  "relative flex shrink-0 items-center gap-1.5 rounded-t-lg px-3 py-2 text-xs font-semibold transition-colors",
+                  selected ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className={cn("size-1.5 rounded-full", columnDotColors[col.id])} aria-hidden="true" />
+                {col.name}
+                <span className="rounded-md bg-muted px-1 text-[10px] tabular-nums">{count}</span>
+                {selected && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary" aria-hidden="true" />}
+              </button>
             )
+          })}
+        </div>
+
+        <div className="flex gap-4 p-4 md:overflow-x-auto">
+          {columns.map((col) => {
+            const colTasks = tasks.filter((t) => t.column === col.id && visible(t))
             const colHours = colTasks.reduce((acc, t) => acc + t.hoursLogged, 0)
             const isDragOver = dragOverCol === col.id
 
             return (
-              <section key={col.id} aria-label={`${col.name}: ${colTasks.length} tarefas`} className="flex min-w-[16.5rem] flex-1 basis-0 snap-start flex-col">
-                <div className="mb-3 flex items-center gap-2 px-1">
+              <section
+                key={col.id}
+                aria-label={`${col.name}: ${colTasks.length} tarefas`}
+                className={cn(
+                  "min-w-0 flex-1 flex-col md:flex md:min-w-[16.5rem] md:basis-0",
+                  mobileColumn === col.id ? "flex animate-in fade-in duration-200 md:animate-none" : "hidden"
+                )}
+              >
+                <div className="mb-3 hidden items-center gap-2 px-1 md:flex">
                   <span className={cn("size-2 rounded-full shrink-0 transition-transform duration-200", columnDotColors[col.id] || "bg-muted-foreground")} />
                   <span className="text-sm font-semibold text-card-foreground">{col.name}</span>
                   <span className="rounded-md bg-muted px-1.5 text-xs font-bold text-muted-foreground">
@@ -182,7 +218,10 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
                       {isDragOver ? (
                         <span className="text-primary font-medium animate-in fade-in">Soltar aqui</span>
                       ) : (
-                        <span>Arraste tarefas aqui</span>
+                        <>
+                          <span className="hidden md:inline">Arraste tarefas aqui</span>
+                          <span className="md:hidden">Nenhuma tarefa nesta coluna</span>
+                        </>
                       )}
                     </div>
                   )}
@@ -284,9 +323,19 @@ function TaskCard({
       <p className="mt-2.5 text-sm leading-snug text-card-foreground text-pretty font-medium">{task.title}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className={cn("flex items-center", p.className)} title={`Prioridade: ${p.label}`} aria-label={`Prioridade: ${p.label}`}>
-          <p.icon className="size-3.5" />
-        </span>
+        {task.priority !== "none" && (
+          <span
+            className={cn(
+              "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold text-foreground",
+              task.priority === "urgent" ? "border-destructive/40 bg-destructive/10" : "border-border/80 bg-muted/50"
+            )}
+            title={`Prioridade ${p.label.toLowerCase()}`}
+          >
+            <p.icon className={cn("size-3 shrink-0", p.className)} aria-hidden="true" />
+            <span className="sr-only">Prioridade </span>
+            {p.label}
+          </span>
+        )}
         {task.externalRef && (
           <span
             className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary"

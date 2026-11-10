@@ -234,6 +234,12 @@
 }
 
 /* ─── Timer Pulse ───────────────────────────────────────────────── */
+/* Colunas de gráfico crescem a partir da base */
+@keyframes barGrow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
 @keyframes timerPulse {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 40%, transparent); }
   50%       { box-shadow: 0 0 0 5px color-mix(in oklch, var(--primary) 0%, transparent); }
