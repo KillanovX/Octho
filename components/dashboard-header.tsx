@@ -1,12 +1,18 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Play, Plus, Bell, Square, RotateCcw, ChevronDown, Check } from "lucide-react"
+import { Play, Plus, Bell, Square, RotateCcw, ChevronDown, Check, Menu } from "lucide-react"
 import { useApp, getGreeting } from "@/lib/context"
 import { TaskModal } from "@/components/task-modal"
 import { NotificationPanel } from "@/components/notification-panel"
 
-export function DashboardHeader() {
+// "terça-feira, 10 de novembro" -> "Terça-feira, 10 de novembro" (CSS capitalize deixaria "De Novembro")
+function todayLabel() {
+  const s = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+export function DashboardHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const {
     currentUser,
     timer,
@@ -43,18 +49,22 @@ export function DashboardHeader() {
   return (
     <>
       <header className="flex flex-col gap-4 border-b border-border bg-background/80 px-6 py-4 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={onOpenMenu}
+            className="-ml-1 mt-0.5 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:hidden"
+            aria-label="Abrir menu"
+          >
+            <Menu className="size-5" />
+          </button>
+          <div>
           <h1 className="text-lg font-bold text-foreground">
             {getGreeting()},{" "}
             <span className="text-primary">{(currentUser?.name || "Usuário").split(" ")[0]}</span>
           </h1>
-          <p className="text-sm text-muted-foreground capitalize">
-            {new Date().toLocaleDateString("pt-BR", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            })}
-          </p>
+          <p className="text-sm text-muted-foreground">{todayLabel()}</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -157,8 +167,9 @@ export function DashboardHeader() {
             onClick={() => setShowNewTask(true)}
             className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/25 transition-all duration-150 hover:bg-primary/90 hover:shadow-md hover:shadow-primary/30 hover:scale-105 active:scale-95"
           >
-            <Plus className="size-4" />
+            <Plus className="size-4" aria-hidden="true" />
             <span className="hidden sm:inline">Nova tarefa</span>
+            <span className="sr-only sm:hidden">Nova tarefa</span>
           </button>
         </div>
       </header>

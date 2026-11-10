@@ -5,32 +5,19 @@ import { useApp, timeAgo } from "@/lib/context"
 import { TaskDetailsModal } from "@/components/task-details-modal"
 import type { Task } from "@/lib/data"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { actorOf, taskCodeFromTarget } from "@/lib/people"
 
-const nameMap: Record<string, string> = {
-  MA: "Marina",
-  JS: "João",
-  RP: "Rafa",
-  FA: "Flavio",
-}
 
-const avatarMap: Record<string, string> = {
-  MA: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
-  FA: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
-  JS: "https://images.shadcnspace.com/assets/profiles/user-2.jpg",
-  RP: "https://images.shadcnspace.com/assets/profiles/user-4.jpg",
-}
 
 export function ActivityFeed() {
-  const { userData } = useApp()
+  const { userData, profilesList } = useApp()
   const { activityFeed } = userData
   const [editTask, setEditTask] = useState<Task | null>(null)
 
   const handleClickEvent = (target: string) => {
-    const codeMatch = target.match(/^(FLX-\d+)/)
-    if (codeMatch) {
-      const task = userData.tasks.find(t => t.code === codeMatch[1])
-      if (task) setEditTask(task)
-    }
+    const code = taskCodeFromTarget(target)
+    const task = code ? userData.tasks.find((t) => t.code === code) : undefined
+    if (task) setEditTask(task)
   }
 
   return (
@@ -39,7 +26,7 @@ export function ActivityFeed() {
         <div className="flex items-center justify-between mb-1">
           <div>
             <h3 className="text-sm font-semibold text-card-foreground">Atividade recente</h3>
-            <p className="text-xs text-muted-foreground">O que a equipe fez hoje</p>
+            <p className="text-xs text-muted-foreground">Últimas ações da equipe</p>
           </div>
           {activityFeed.length > 0 && (
             <span className="text-xs tabular-nums font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">
@@ -59,10 +46,10 @@ export function ActivityFeed() {
                 {i !== Math.min(activityFeed.length, 10) - 1 && (
                   <span className="absolute left-3.5 top-8 h-full w-px bg-border" aria-hidden />
                 )}
-                <Avatar className="z-10 size-7 shrink-0 border border-border/50 transition-transform duration-150 hover:scale-110">
-                  {avatarMap[e.user] && <AvatarImage src={avatarMap[e.user]} alt={nameMap[e.user] ?? e.user} />}
-                  <AvatarFallback style={{ backgroundColor: e.userColor, color: "#fff" }} className="text-[10px] font-semibold">
-                    {e.user}
+                <Avatar className="z-10 size-7 shrink-0 border border-border/50">
+                  {actorOf(e, profilesList).imageUrl && <AvatarImage src={actorOf(e, profilesList).imageUrl} alt="" />}
+                  <AvatarFallback style={{ backgroundColor: actorOf(e, profilesList).color, color: "#fff" }} className="text-[10px] font-semibold">
+                    {actorOf(e, profilesList).initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
@@ -70,7 +57,7 @@ export function ActivityFeed() {
                     onClick={() => handleClickEvent(e.target)}
                     className="text-left text-sm leading-snug text-card-foreground hover:underline decoration-muted-foreground underline-offset-2 transition-all"
                   >
-                    <span className="font-semibold text-foreground">{nameMap[e.user] ?? e.user}</span>{" "}
+                    <span className="font-semibold text-foreground">{actorOf(e, profilesList).name}</span>{" "}
                     <span className="text-muted-foreground">{e.action}</span>{" "}
                     <span className="text-card-foreground font-medium">{e.target}</span>
                   </button>

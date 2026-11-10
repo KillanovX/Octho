@@ -95,4 +95,6 @@ export type ActivityEvent = {
   action: string
   target: string
   time: string
+  /** autor (profiles.id); eventos antigos só têm as iniciais em `user` */
+  userId?: string
 }

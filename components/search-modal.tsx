@@ -5,6 +5,7 @@ import { Search, X } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { useApp, timeAgo } from "@/lib/context"
 import { Task, columns } from "@/lib/data"
+import { assigneeImage } from "@/lib/people"
 
 interface SearchModalProps {
   open: boolean
@@ -20,15 +21,9 @@ const priorityLabels: Record<string, { label: string; color: string; dot: string
   none: { label: "—", color: "text-muted-foreground", dot: "bg-muted-foreground" },
 }
 
-const avatarMap: Record<string, string> = {
-  MA: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
-  FA: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
-  JS: "https://images.shadcnspace.com/assets/profiles/user-2.jpg",
-  RP: "https://images.shadcnspace.com/assets/profiles/user-4.jpg",
-}
 
 export function SearchModal({ open, onClose, onSelectTask }: SearchModalProps) {
-  const { userData } = useApp()
+  const { userData, profilesList } = useApp()
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -190,7 +185,7 @@ export function SearchModal({ open, onClose, onSelectTask }: SearchModalProps) {
                     }`}
                   >
                     <Avatar className="size-7 shrink-0 border border-border">
-                      {avatarMap[task.assignee] && <AvatarImage src={avatarMap[task.assignee]} alt={task.assignee} />}
+                      {assigneeImage(task, profilesList) && <AvatarImage src={assigneeImage(task, profilesList)} alt="" />}
                       <AvatarFallback style={{ backgroundColor: task.assigneeColor, color: "#fff" }} className="text-[10px] font-bold">
                         {task.assignee}
                       </AvatarFallback>

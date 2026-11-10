@@ -114,6 +114,7 @@ type AppContextType = {
   setTimerRunning: (running: boolean) => void
   // Notifications
   unreadCount: number
+  lastReadAt: number
   markAllRead: () => void
   // Computed (usuário atual)
   hoursMonth: number
@@ -271,6 +272,7 @@ function rowToEvent(row: Record<string, unknown>): ActivityEvent & { createdAt: 
   return {
     id: row.id as string,
     user: row.user_initials as string,
+    userId: (row.user_id as string) || undefined,
     userColor: row.user_color as string,
     action: row.action as string,
     target: row.target as string,
@@ -537,6 +539,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const event = {
         id: crypto.randomUUID(),
         user: me.avatar || "EU",
+        userId: me.id,
         userColor: me.avatarColor || "#6366f1",
         action,
         target,
@@ -853,6 +856,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     logTimerHours,
     setTimerRunning,
     unreadCount,
+    lastReadAt: lastRead,
     markAllRead,
     hoursMonth,
     completedTasksMonth,

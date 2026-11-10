@@ -101,6 +101,7 @@ export default function Page() {
   const { activeView, isAuthenticated, isAuthLoading, isPendingApproval, isSupabaseActive, isAdmin } = useApp()
   const [searchOpen, setSearchOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const handleSelectTask = (task: Task) => {
     setSearchOpen(false)
@@ -148,10 +149,10 @@ export default function Page() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar onOpenSearch={() => setSearchOpen(true)} />
+      <Sidebar onOpenSearch={() => setSearchOpen(true)} mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
 
       <main className="flex flex-1 flex-col overflow-hidden">
-        <DashboardHeader />
+        <DashboardHeader onOpenMenu={() => setMobileNavOpen(true)} />
 
         {activeView === "dashboard" && (
           <ViewWrapper viewKey="dashboard">

@@ -4,6 +4,7 @@ import React from "react"
 import { X, Check } from "lucide-react"
 import { useApp } from "@/lib/context"
 import { cn } from "@/lib/utils"
+import { useModal } from "@/lib/use-modal"
 
 export const shadcnAvatars = [
   { id: "user-1", name: "Avatar 1", url: "https://images.shadcnspace.com/assets/profiles/user-1.jpg" },
@@ -26,6 +27,8 @@ type AvatarSelectorModalProps = {
 export function AvatarSelectorModal({ open, onClose }: AvatarSelectorModalProps) {
   const { currentUser, updateMyProfile } = useApp()
 
+  const panelRef = useModal(open, onClose)
+
   if (!open) return null
 
   const handleSelect = async (url: string) => {
@@ -40,7 +43,10 @@ export function AvatarSelectorModal({ open, onClose }: AvatarSelectorModalProps)
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xs rounded-2xl border border-border bg-card p-4 shadow-2xl space-y-3 animate-in fade-in zoom-in-95 duration-150"
+        ref={panelRef}
+        role="dialog" aria-modal="true" tabIndex={-1}
+        aria-label="Escolher avatar"
+        className="w-full max-w-xs rounded-2xl border border-border bg-card p-4 shadow-2xl space-y-3 outline-none animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-2 border-b border-border">

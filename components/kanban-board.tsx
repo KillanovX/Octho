@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, DragEvent } from "react"
-import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus, GripVertical, Filter, Tag as TagIcon, Building2 } from "lucide-react"
+import { Plus, Clock, SignalHigh, SignalMedium, SignalLow, AlertTriangle, Minus, GripVertical, Filter, Tag as TagIcon, Building2, ListChecks } from "lucide-react"
 import { columns, type Priority, type Task, type ColumnId } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/context"
@@ -10,6 +10,7 @@ import { TaskDetailsModal } from "@/components/task-details-modal"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Select, type SelectOption } from "@/components/ui/select"
 import { tagIconMap } from "@/components/tag-manager-modal"
+import { assigneeImage } from "@/lib/people"
 
 const priorityConfig: Record<Priority, { icon: typeof SignalHigh; className: string; label: string }> = {
   urgent: { icon: AlertTriangle, className: "text-destructive", label: "Urgente" },
@@ -28,12 +29,6 @@ const priorityFilterOptions: SelectOption<string>[] = [
   { value: "none", label: "Sem prioridade", icon: <Minus className="size-3.5 text-muted-foreground shrink-0" /> },
 ]
 
-const avatarMap: Record<string, string> = {
-  MA: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
-  FA: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
-  JS: "https://images.shadcnspace.com/assets/profiles/user-2.jpg",
-  RP: "https://images.shadcnspace.com/assets/profiles/user-4.jpg",
-}
 
 const columnDotColors: Record<string, string> = {
   backlog: "bg-muted-foreground",
@@ -113,7 +108,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 bg-card/80">
           <div>
             <h2 className="text-sm font-semibold text-card-foreground">Quadro Kanban</h2>
-            <p className="text-xs text-muted-foreground">Todas as tarefas do projeto Octho Core</p>
+            <p className="text-xs text-muted-foreground">Arraste os cards entre as colunas para atualizar o status</p>
           </div>
           <div className="w-52">
             <Select
@@ -125,7 +120,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
           </div>
         </div>
 
-        <div className="flex gap-4 overflow-x-auto p-4">
+        <div className="flex gap-4 overflow-x-auto p-4 snap-x snap-mandatory sm:snap-none">
           {columns.map((col) => {
             const colTasks = tasks.filter(
               (t) => t.column === col.id && (priorityFilter === "all" || t.priority === priorityFilter)
@@ -134,7 +129,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
             const isDragOver = dragOverCol === col.id
 
             return (
-              <div key={col.id} className="flex w-72 shrink-0 flex-col">
+              <section key={col.id} aria-label={`${col.name}: ${colTasks.length} tarefas`} className="flex min-w-[16.5rem] flex-1 basis-0 snap-start flex-col">
                 <div className="mb-3 flex items-center gap-2 px-1">
                   <span className={cn("size-2 rounded-full shrink-0 transition-transform duration-200", columnDotColors[col.id] || "bg-muted-foreground")} />
                   <span className="text-sm font-semibold text-card-foreground">{col.name}</span>
@@ -151,6 +146,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
                     onClick={() => setCreateColumn(col.id)}
                     className="rounded-lg p-1 text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground hover:scale-110"
                     title={`Adicionar tarefa em ${col.name}`}
+                    aria-label={`Adicionar tarefa em ${col.name}`}
                   >
                     <Plus className="size-4" />
                   </button>
@@ -191,7 +187,7 @@ export function KanbanBoard({ fullWidth }: { fullWidth?: boolean }) {
                     </div>
                   )}
                 </div>
-              </div>
+              </section>
             )
           })}
         </div>
@@ -231,6 +227,7 @@ function TaskCard({
   isDragging: boolean
 }) {
   const p = priorityConfig[task.priority]
+  const { profilesList } = useApp()
 
   return (
     <article
@@ -240,8 +237,17 @@ function TaskCard({
       onDragOver={(e) => onDragOverCard(e, task.id, task.column)}
       onDrop={(e) => onDropCard(e, task.id, task.column)}
       onClick={onEdit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onEdit()
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`${task.code}: ${task.title}`}
       className={cn(
-        "group cursor-pointer rounded-xl border border-border bg-background p-3.5",
+        "group cursor-pointer rounded-xl border border-border bg-background p-3.5 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         "transition-all duration-200 ease-out",
         "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-black/8",
         "active:translate-y-0 active:shadow-none",
@@ -257,29 +263,38 @@ function TaskCard({
           </span>
         </div>
 
-        {/* Responsavel (Avatar + Full Name) */}
-        <div className="flex items-center gap-1.5 shrink-0 bg-muted/40 rounded-full pl-1 pr-2 py-0.5 border border-border/50 transition-all duration-150 group-hover:border-border">
-          <Avatar className="size-5 shrink-0 border border-border">
-            {avatarMap[task.assignee] && <AvatarImage src={avatarMap[task.assignee]} alt={task.assignee} />}
-            <AvatarFallback
-              style={{ backgroundColor: task.assigneeColor || "#6366f1", color: "#fff" }}
-              className="text-[9px] font-bold"
-            >
-              {task.assigneeAvatar || (task.assignee ? task.assignee.slice(0, 2).toUpperCase() : "US")}
-            </AvatarFallback>
-          </Avatar>
-          <span className="text-[11px] font-semibold text-foreground truncate max-w-[110px]">
-            {task.assigneeName || task.assignee}
+        {/* Responsável */}
+        {task.assigneeName || task.assignee ? (
+          <div className="flex items-center gap-1.5 shrink-0 bg-muted/40 rounded-full pl-1 pr-2 py-0.5 border border-border/50 transition-colors duration-150 group-hover:border-border">
+            <Avatar className="size-5 shrink-0 border border-border">
+              {assigneeImage(task, profilesList) && <AvatarImage src={assigneeImage(task, profilesList)} alt="" />}
+              <AvatarFallback style={{ backgroundColor: task.assigneeColor || "#6366f1", color: "#fff" }} className="text-[9px] font-bold">
+                {task.assigneeAvatar || (task.assigneeName || task.assignee).slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-[11px] font-semibold text-foreground truncate max-w-[110px]">{task.assigneeName || task.assignee}</span>
+          </div>
+        ) : (
+          <span className="shrink-0 rounded-full border border-dashed border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+            Sem responsável
           </span>
-        </div>
+        )}
       </div>
 
       <p className="mt-2.5 text-sm leading-snug text-card-foreground text-pretty font-medium">{task.title}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className={cn("flex items-center", p.className)} title={p.label}>
+        <span className={cn("flex items-center", p.className)} title={`Prioridade: ${p.label}`} aria-label={`Prioridade: ${p.label}`}>
           <p.icon className="size-3.5" />
         </span>
+        {task.externalRef && (
+          <span
+            className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary"
+            title={task.vaultPath ? `Chamado no vault: ${task.vaultPath}` : "Chamado ITSM"}
+          >
+            #{task.externalRef}
+          </span>
+        )}
         {task.client && (
           <span className="flex items-center gap-1 rounded-full border border-border/80 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground bg-muted/50">
             <Building2 className="size-3 text-primary shrink-0" />
@@ -300,13 +315,33 @@ function TaskCard({
             </span>
           )
         })}
+        <CardActionsProgress task={task} />
         {(task.hoursLogged > 0 || task.estimate > 0) && (
-          <span className="ml-auto flex items-center gap-0.5 text-[11px] tabular-nums text-muted-foreground font-medium">
+          <span className="ml-auto flex items-center gap-0.5 text-[11px] tabular-nums text-muted-foreground font-medium" title="Horas registradas / estimadas">
             <Clock className="size-3" />
             {task.hoursLogged}/{task.estimate}h
           </span>
         )}
       </div>
     </article>
+  )
+}
+
+/** Progresso das ações (checkpoints acionáveis; histórico não conta). */
+function CardActionsProgress({ task }: { task: Task }) {
+  const actions = (task.checkpoints ?? []).filter((c) => c.kind !== "log")
+  if (actions.length === 0) return null
+  const done = actions.filter((c) => c.completed).length
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-0.5 text-[11px] tabular-nums font-medium",
+        done === actions.length ? "text-chart-4" : "text-muted-foreground"
+      )}
+      title={`${done} de ${actions.length} ações concluídas`}
+    >
+      <ListChecks className="size-3" />
+      {done}/{actions.length}
+    </span>
   )
 }

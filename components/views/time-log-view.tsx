@@ -7,6 +7,7 @@ import { Select, SelectOption } from "@/components/ui/select"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { periodStart, roundItsmHours, type Period } from "@/lib/hours"
 import type { TimeEntrySource } from "@/lib/data"
+import { useModal } from "@/lib/use-modal"
 
 const periodOptions: SelectOption<string>[] = [
   { value: "all", label: "Todo o período", icon: <Calendar className="size-3.5 text-muted-foreground" /> },
@@ -132,7 +133,7 @@ export function TimeLogView() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="w-44">
+            <div className="w-52">
               <Select value={scope} onChange={setScope} options={scopeOptions} triggerClassName="h-9 text-xs" />
             </div>
             <div className="w-40">
@@ -260,6 +261,7 @@ function ManualEntryForm({
   onClose: () => void
   onSubmit: (v: ManualEntryInput) => Promise<void>
 }) {
+  const panelRef = useModal<HTMLFormElement>(true, onClose)
   const [taskId, setTaskId] = useState("")
   const [date, setDate] = useState(todayISO())
   const [time, setTime] = useState("09:00")
@@ -271,8 +273,11 @@ function ManualEntryForm({
   const inputClass = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-150" onClick={onClose}>
       <form
+        ref={panelRef}
+        role="dialog" aria-modal="true" tabIndex={-1}
+        aria-label="Lançar horas"
         onClick={(e) => e.stopPropagation()}
         onSubmit={async (e) => {
           e.preventDefault()
@@ -284,7 +289,7 @@ function ManualEntryForm({
           await onSubmit({ taskId, date, time, hours: h, note: note.trim() })
           setSaving(false)
         }}
-        className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-2xl"
+        className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-2xl outline-none animate-in fade-in zoom-in-95 duration-200"
       >
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-foreground">Lançar horas</h3>

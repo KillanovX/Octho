@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
+import { useModal } from "@/lib/use-modal"
 
 export type Project = {
   id: string
@@ -28,6 +29,7 @@ export function ProjectsView() {
   const { setActiveView, currentUser, reportError } = useApp()
   const [projectsList, setProjectsList] = useState<Project[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const projectModalRef = useModal(isModalOpen, () => setIsModalOpen(false))
 
   // Form state
   const [name, setName] = useState("")
@@ -313,8 +315,8 @@ export function ProjectsView() {
 
       {/* Modal Criar Projeto */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150" onClick={() => setIsModalOpen(false)}>
+          <div ref={projectModalRef} role="dialog" aria-modal="true" tabIndex={-1} aria-label="Novo projeto" onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-5 outline-none animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <FolderPlus className="size-5 text-primary" />

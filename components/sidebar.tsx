@@ -18,11 +18,13 @@ import {
   LogOut,
   Video,
   Camera,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp, type ViewId } from "@/lib/context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { AvatarSelectorModal } from "@/components/avatar-selector-modal"
+import { useModal } from "@/lib/use-modal"
 
 type NavDef = { name: string; icon: typeof Inbox; view: ViewId; badge?: string }
 
@@ -40,7 +42,14 @@ const workspace: NavDef[] = [
   { name: "Relatórios", icon: BarChart3, view: "reports" },
 ]
 
-export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
+type SidebarProps = {
+  onOpenSearch?: () => void
+  /** Drawer no mobile (< lg) */
+  mobileOpen?: boolean
+  onMobileClose?: () => void
+}
+
+export function Sidebar({ onOpenSearch, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { activeView, setActiveView, currentUser, unreadCount, signOut, isAdmin } = useApp()
   const [showSwitcher, setShowSwitcher] = useState(false)
 
@@ -50,12 +59,18 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
   const avatarColor = currentUser?.avatarColor || "#6366f1"
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
+  const drawerRef = useModal<HTMLElement>(mobileOpen, () => onMobileClose?.())
 
+  // Navegar fecha o drawer no mobile
+  const go = (view: ViewId) => {
+    setActiveView(view)
+    onMobileClose?.()
+  }
 
-  return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 lg:flex">
+  const panel = (
+    <>
       {/* Workspace switcher */}
-      <button className="mb-5 flex items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-all duration-150 hover:bg-sidebar-accent group">
+      <div className="mb-5 flex items-center gap-2.5 rounded-xl px-2 py-2 group">
         <span className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-tr from-[#0050D7] via-[#0F6FFF] to-[#5EC9FF] p-1.5 shadow-md shrink-0 transition-transform duration-200 group-hover:scale-105">
           <Image
             src="/branding/symbol/octho-symbol-white-512.png"
@@ -66,12 +81,24 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
           />
         </span>
         <span className="flex-1 text-sm font-bold text-sidebar-foreground">Octho</span>
-        <ChevronDown className="size-4 text-muted-foreground transition-transform duration-200 group-hover:text-sidebar-foreground" />
-      </button>
+        {mobileOpen && (
+          <button
+            type="button"
+            onClick={onMobileClose}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground lg:hidden"
+            aria-label="Fechar menu"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
 
       {/* Search */}
       <button
-        onClick={onOpenSearch}
+        onClick={() => {
+          onMobileClose?.()
+          onOpenSearch?.()
+        }}
         className="mb-5 flex items-center gap-2.5 rounded-xl border border-sidebar-border bg-background/60 px-3 py-2 text-sm text-muted-foreground transition-all duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground hover:border-sidebar-ring/40 group"
       >
         <Search className="size-4 shrink-0 transition-colors group-hover:text-primary" />
@@ -87,7 +114,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
             label={item.name}
             badge={item.view === "inbox" && unreadCount > 0 ? String(unreadCount) : undefined}
             active={activeView === item.view}
-            onClick={() => setActiveView(item.view)}
+            onClick={() => go(item.view)}
           />
         ))}
       </nav>
@@ -102,7 +129,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
             icon={item.icon}
             label={item.name}
             active={activeView === item.view}
-            onClick={() => setActiveView(item.view)}
+            onClick={() => go(item.view)}
           />
         ))}
         {isAdmin && (
@@ -111,7 +138,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
             label="Administração"
             badge="Admin"
             active={activeView === "admin"}
-            onClick={() => setActiveView("admin")}
+            onClick={() => go("admin")}
           />
         )}
       </nav>
@@ -121,7 +148,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
           icon={Settings}
           label="Configurações"
           active={activeView === "settings"}
-          onClick={() => setActiveView("settings")}
+          onClick={() => go("settings")}
         />
 
         {/* Menu da conta */}
@@ -176,8 +203,34 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
         </button>
       </div>
 
+    </>
+  )
+
+  return (
+    <>
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 lg:flex" aria-label="Menu lateral">
+        {panel}
+      </aside>
+
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" onClick={onMobileClose}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" aria-hidden="true" />
+          <aside
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+            className="relative flex h-full w-72 max-w-[85vw] flex-col overflow-y-auto bg-sidebar px-3 py-4 shadow-2xl outline-none animate-in slide-in-from-left duration-250 ease-out"
+          >
+            {panel}
+          </aside>
+        </div>
+      )}
+
       <AvatarSelectorModal open={isAvatarModalOpen} onClose={() => setIsAvatarModalOpen(false)} />
-    </aside>
+    </>
   )
 }
 

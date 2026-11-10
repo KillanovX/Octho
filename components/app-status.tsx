@@ -11,7 +11,7 @@ export function SyncErrorBanner() {
   return (
     <div
       role="alert"
-      className="fixed bottom-4 left-1/2 z-[60] flex w-[min(560px,calc(100%-2rem))] -translate-x-1/2 items-start gap-3 rounded-xl border border-destructive/30 bg-card p-3 shadow-xl"
+      className="fixed bottom-4 left-1/2 z-[70] flex w-[min(560px,calc(100%-2rem))] -translate-x-1/2 items-start gap-3 rounded-xl border border-destructive/30 bg-card p-3 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-300"
     >
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
       <p className="flex-1 text-sm text-card-foreground">{syncError}</p>

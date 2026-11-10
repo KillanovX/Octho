@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useApp, type UserRole } from "@/lib/context"
 import { authFetch } from "@/lib/supabase"
+import { useModal } from "@/lib/use-modal"
 
 type AdminUser = {
   id: string
@@ -56,6 +57,11 @@ export function AdminView() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+
+  const addRef = useModal(isAddModalOpen, () => setIsAddModalOpen(false))
+  const editRef = useModal(isEditModalOpen, () => setIsEditModalOpen(false))
+  const passwordRef = useModal(isPasswordModalOpen, () => setIsPasswordModalOpen(false))
+  const deleteRef = useModal(isDeleteModalOpen, () => setIsDeleteModalOpen(false))
 
   // Target User for Action
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
@@ -164,15 +170,13 @@ export function AdminView() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
+    <div className="flex-1 overflow-y-auto p-6">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="size-6 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Administração de Usuários</h1>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h2 className="text-xl font-bold text-foreground">Administração de Usuários</h2>
+          <p className="text-xs text-muted-foreground">
             Crie contas, aprove acessos pendentes, altere papéis, redefina senhas e remova usuários.
           </p>
         </div>
@@ -185,7 +189,7 @@ export function AdminView() {
             setErrorMsg(null)
             setIsAddModalOpen(true)
           }}
-          className="flex items-center gap-2 rounded-xl h-11 px-4 font-medium"
+          className="flex items-center gap-2 rounded-lg h-9 px-3 text-xs font-medium"
         >
           <UserPlus className="size-4" />
           <span>Novo Usuário</span>
@@ -360,8 +364,8 @@ export function AdminView() {
 
       {/* ── Modal 1: Adicionar Usuário ── */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150" onClick={() => setIsAddModalOpen(false)}>
+          <div ref={addRef} role="dialog" aria-modal="true" tabIndex={-1} aria-label="Novo usuário" onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-5 outline-none animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-2 border-b border-border pb-3">
               <UserPlus className="size-5 text-primary" />
               <h3 className="text-lg font-bold text-foreground">Novo Usuário</h3>
@@ -428,8 +432,8 @@ export function AdminView() {
 
       {/* ── Modal 2: Editar Nome de Usuário ── */}
       {isEditModalOpen && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150" onClick={() => setIsEditModalOpen(false)}>
+          <div ref={editRef} role="dialog" aria-modal="true" tabIndex={-1} aria-label="Editar usuário" onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-5 outline-none animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-2 border-b border-border pb-3">
               <Pencil className="size-5 text-primary" />
               <h3 className="text-lg font-bold text-foreground">Editar Usuário</h3>
@@ -470,8 +474,8 @@ export function AdminView() {
 
       {/* ── Modal 3: Mudar Senha do Usuário ── */}
       {isPasswordModalOpen && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150" onClick={() => setIsPasswordModalOpen(false)}>
+          <div ref={passwordRef} role="dialog" aria-modal="true" tabIndex={-1} aria-label="Mudar senha" onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-5 outline-none animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-2 border-b border-border pb-3">
               <KeyRound className="size-5 text-primary" />
               <h3 className="text-lg font-bold text-foreground">Mudar Senha de {selectedUser.name}</h3>
@@ -513,8 +517,8 @@ export function AdminView() {
 
       {/* ── Modal 4: Excluir Usuário ── */}
       {isDeleteModalOpen && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150" onClick={() => setIsDeleteModalOpen(false)}>
+          <div ref={deleteRef} role="dialog" aria-modal="true" tabIndex={-1} aria-label="Excluir usuário" onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl space-y-5 outline-none animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-2 border-b border-border pb-3 text-destructive">
               <Trash2 className="size-5" />
               <h3 className="text-lg font-bold">Excluir Usuário</h3>
@@ -538,6 +542,7 @@ export function AdminView() {
           </div>
         </div>
       )}
+    </div>
     </div>
   )
 }

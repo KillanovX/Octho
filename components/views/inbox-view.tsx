@@ -4,25 +4,17 @@ import React, { useState } from "react"
 import { Bell, CheckCheck, MessageSquare, CheckCircle, Clock, AlertCircle, ArrowUpRight } from "lucide-react"
 import { useApp, timeAgo } from "@/lib/context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { actorOf } from "@/lib/people"
 
-const avatarMap: Record<string, string> = {
-  MA: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
-  FA: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
-  JS: "https://images.shadcnspace.com/assets/profiles/user-2.jpg",
-  RP: "https://images.shadcnspace.com/assets/profiles/user-4.jpg",
-}
 
 export function InboxView() {
-  const { userData, markAllRead, unreadCount } = useApp()
+  const { userData, markAllRead, unreadCount, lastReadAt, profilesList } = useApp()
   const { activityFeed } = userData
 
   const [tab, setTab] = useState<"all" | "unread">("all")
 
   const filteredFeed = activityFeed.filter((item) => {
-    if (tab === "unread") {
-      // simulate first 2 as unread if unreadCount > 0
-      return unreadCount > 0
-    }
+    if (tab === "unread") return item.createdAt > lastReadAt
     return true
   })
 
@@ -89,17 +81,17 @@ export function InboxView() {
                 className="flex items-start gap-4 p-4 hover:bg-accent/40 transition-colors"
               >
                 <Avatar className="size-9 shrink-0 mt-0.5">
-                  {avatarMap[item.user] && <AvatarImage src={avatarMap[item.user]} alt={item.user} />}
-                  <AvatarFallback style={{ backgroundColor: item.userColor, color: "#fff" }} className="text-xs font-semibold">
-                    {item.user}
+                  {actorOf(item, profilesList).imageUrl && <AvatarImage src={actorOf(item, profilesList).imageUrl} alt="" />}
+                  <AvatarFallback style={{ backgroundColor: actorOf(item, profilesList).color, color: "#fff" }} className="text-xs font-semibold">
+                    {actorOf(item, profilesList).initials}
                   </AvatarFallback>
                 </Avatar>
 
                 <div className="flex flex-1 flex-col gap-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-foreground">{item.user}</span>
+                    <span className="text-sm font-semibold text-foreground">{actorOf(item, profilesList).name}</span>
                     <span className="text-xs text-muted-foreground">{item.action}</span>
-                    <span className="text-xs font-mono font-medium text-foreground bg-muted px-1.5 py-0.5 rounded truncate">
+                    <span className="text-xs font-medium text-foreground bg-muted px-1.5 py-0.5 rounded truncate">
                       {item.target}
                     </span>
                   </div>

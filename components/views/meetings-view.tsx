@@ -464,21 +464,16 @@ export function MeetingsView() {
       <div className="mx-auto flex max-w-[860px] flex-col gap-6">
 
         {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="flex items-center gap-2.5 mb-1">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10">
-                <Video className="size-4.5 text-primary" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">Reuniões</h2>
-            </div>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-xl font-bold text-foreground">Reuniões</h2>
+            <p className="text-xs text-muted-foreground">
               Registre suas calls, acompanhe durações e vincule às tarefas
             </p>
           </div>
           <Button
             onClick={() => { setShowForm(true); setEditMeeting(null) }}
-            className="rounded-xl gap-2 shadow-sm shadow-primary/20 hover:shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
+            className="h-9 rounded-lg gap-2 px-3 text-xs"
           >
             <Plus className="size-4" />
             Nova Reunião

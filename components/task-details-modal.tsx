@@ -34,6 +34,7 @@ import { tagIconMap, TagManagerModal } from "@/components/tag-manager-modal"
 import { getStoredClients, saveStoredClient } from "@/lib/clients-service"
 import { getStoredTags, saveStoredTags, type TagItem } from "@/lib/tags-service"
 import { cn } from "@/lib/utils"
+import { useModal } from "@/lib/use-modal"
 
 const priorityOptionsList: SelectOption<Priority>[] = [
   { value: "urgent", label: "Urgente", icon: <AlertTriangle className="size-4 text-destructive shrink-0" /> },
@@ -96,6 +97,8 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
       })
     setAllUsers(Array.from(map.values()))
   }, [currentUser, profilesList])
+
+  const panelRef = useModal(open && !!task, onClose)
 
   if (!open || !task) return null
 
@@ -285,7 +288,10 @@ export function TaskDetailsModal({ open, onClose, task }: TaskDetailsModalProps)
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl h-[88vh] sm:h-[85vh] rounded-2xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300"
+        ref={panelRef}
+        role="dialog" aria-modal="true" tabIndex={-1}
+        aria-label={`Tarefa ${task.code}: ${task.title}`}
+        className="relative w-full max-w-5xl h-[88vh] sm:h-[85vh] rounded-2xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden outline-none animate-in fade-in zoom-in-[0.98] slide-in-from-bottom-2 duration-200 ease-out"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

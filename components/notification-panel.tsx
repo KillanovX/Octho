@@ -3,28 +3,17 @@
 import { useEffect, useRef } from "react"
 import { useApp, timeAgo } from "@/lib/context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { actorOf } from "@/lib/people"
 
 interface NotificationPanelProps {
   open: boolean
   onClose: () => void
 }
 
-const userNames: Record<string, string> = {
-  MA: "Marina",
-  JS: "João",
-  RP: "Rafa",
-  FA: "Flavio",
-}
 
-const avatarMap: Record<string, string> = {
-  MA: "https://images.shadcnspace.com/assets/profiles/user-1.jpg",
-  FA: "https://images.shadcnspace.com/assets/profiles/user-3.jpg",
-  JS: "https://images.shadcnspace.com/assets/profiles/user-2.jpg",
-  RP: "https://images.shadcnspace.com/assets/profiles/user-4.jpg",
-}
 
 export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
-  const { userData, markAllRead } = useApp()
+  const { userData, markAllRead, profilesList } = useApp()
   const panelRef = useRef<HTMLDivElement>(null)
 
   // Mark all as read when panel opens
@@ -79,9 +68,9 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
               className="flex items-start gap-3 border-b border-border/50 px-4 py-3 transition-colors last:border-b-0 hover:bg-accent/50"
             >
               <Avatar className="size-8 shrink-0">
-                {avatarMap[event.user] && <AvatarImage src={avatarMap[event.user]} alt={userNames[event.user] ?? event.user} />}
-                <AvatarFallback style={{ backgroundColor: event.userColor, color: "#fff" }} className="text-[11px] font-bold">
-                  {event.user}
+                {actorOf(event, profilesList).imageUrl && <AvatarImage src={actorOf(event, profilesList).imageUrl} alt="" />}
+                <AvatarFallback style={{ backgroundColor: actorOf(event, profilesList).color, color: "#fff" }} className="text-[11px] font-bold">
+                  {actorOf(event, profilesList).initials}
                 </AvatarFallback>
               </Avatar>
 
@@ -89,7 +78,7 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <p className="text-sm leading-snug text-foreground">
                   <span className="font-medium">
-                    {userNames[event.user] ?? event.user}
+                    {actorOf(event, profilesList).name}
                   </span>{" "}
                   <span className="text-muted-foreground">{event.action}</span>{" "}
                   <span className="font-medium">{event.target}</span>

@@ -23,6 +23,7 @@ import {
 import { TagItem } from "@/lib/tags-service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useModal } from "@/lib/use-modal"
 
 export const tagIconMap: Record<string, typeof Palette> = {
   palette: Palette,
@@ -85,6 +86,8 @@ export function TagManagerModal({ open, onClose, tags, onUpdateTags }: TagManage
     }
   }, [editingTagId])
 
+  const panelRef = useModal(open, onClose)
+
   if (!open) return null
 
   const handleSaveTag = (e: React.FormEvent) => {
@@ -135,8 +138,14 @@ export function TagManagerModal({ open, onClose, tags, onUpdateTags }: TagManage
   const PreviewIcon = tagIconMap[selectedIcon] || TagIcon
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-      <div className="w-full max-w-xl rounded-2xl bg-card border border-border p-6 shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150" onClick={onClose}>
+      <div
+        ref={panelRef}
+        role="dialog" aria-modal="true" tabIndex={-1}
+        aria-label="Gerenciar tags"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-xl rounded-2xl bg-card border border-border p-6 shadow-2xl flex flex-col max-h-[90vh] outline-none animate-in fade-in zoom-in-95 duration-200"
+      >
         <div className="flex items-center justify-between border-b border-border pb-4 mb-6 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg text-primary">

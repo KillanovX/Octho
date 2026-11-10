@@ -21,6 +21,7 @@ import { getStoredTags, saveStoredTags, TagItem } from "@/lib/tags-service"
 import { getStoredClients, saveStoredClient } from "@/lib/clients-service"
 import { TagManagerModal, tagIconMap } from "@/components/tag-manager-modal"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useModal } from "@/lib/use-modal"
 
 const columnOptions: SelectOption<ColumnId>[] = columns.map((col) => ({
   value: col.id,
@@ -141,20 +142,6 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
     setConfirmDelete(false)
   }, [open, task, defaultColumn, currentUser, loadAllUsers])
 
-  // ── ESC key ──
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
-    },
-    [onClose],
-  )
-
-  useEffect(() => {
-    if (open) {
-      document.addEventListener("keydown", handleKeyDown)
-      return () => document.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [open, handleKeyDown])
 
   // ── Tag toggle ──
   const toggleTag = (tag: TagItem) => {
@@ -228,6 +215,8 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
     onClose()
   }
 
+  const panelRef = useModal(open, onClose)
+
   if (!open) return null
 
   const userOptions: SelectOption<string>[] = allUsers.map((u) => ({
@@ -254,6 +243,9 @@ export function TaskModal({ open, onClose, task, defaultColumn }: TaskModalProps
       >
         {/* ── Card ── */}
         <div
+          ref={panelRef}
+          role="dialog" aria-modal="true" tabIndex={-1}
+          aria-label={task ? "Editar tarefa" : "Nova tarefa"}
           className="relative w-full max-w-2xl mx-4 rounded-2xl bg-card border border-border shadow-2xl p-7 animate-in fade-in slide-in-from-bottom-4 duration-300"
           onClick={(e) => e.stopPropagation()}
         >
