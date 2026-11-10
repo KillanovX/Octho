@@ -196,6 +196,24 @@ describe("RLS", () => {
   })
 })
 
+describe("endurecimento", () => {
+  it("helpers de RLS ficam fora do schema exposto pela API", async () => {
+    const [r] = await rows<{ pub: string | null; priv: string | null }>(
+      `select to_regprocedure('public.is_member()')::text pub, to_regprocedure('private.is_member()')::text priv`
+    )
+    expect(r.pub).toBeNull()
+    expect(r.priv).toBe("private.is_member()")
+  })
+
+  it("anon e authenticated não executam funções de trigger", async () => {
+    const [r] = await rows<{ anon: boolean; auth: boolean }>(
+      `select has_function_privilege('anon', 'public.sync_task_hours()', 'execute') anon,
+              has_function_privilege('authenticated', 'public.handle_new_user()', 'execute') auth`
+    )
+    expect(r).toEqual({ anon: false, auth: false })
+  })
+})
+
 describe("triggers", () => {
   it("hours_logged acompanha insert, update (inclusive troca de tarefa) e delete", async () => {
     await db.exec(`insert into tasks (id, user_id, code, title) values ('t3', '${MEMBER}', 'OCT-303', 'Outra')`)
